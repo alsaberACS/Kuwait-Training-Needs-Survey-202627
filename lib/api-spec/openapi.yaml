@@ -3,20 +3,22 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Kuwait Training Needs Survey 2026/27 API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: responses
+    description: Public survey responses (draft, resume, complete)
+  - name: admin
+    description: Protected dashboard analytics (X-Admin-Key header)
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +26,721 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /responses:
+    post:
+      operationId: createResponse
+      tags: [responses]
+      summary: Start a new draft response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResponseRequest"
+      responses:
+        "201":
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyResponse"
+  /responses/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ResponseId"
+    get:
+      operationId: getResponse
+      tags: [responses]
+      summary: Load a response to resume
+      responses:
+        "200":
+          description: Response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateResponse
+      tags: [responses]
+      summary: Autosave draft answers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateResponseRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Already completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /responses/{id}/complete:
+    parameters:
+      - $ref: "#/components/parameters/ResponseId"
+    post:
+      operationId: completeResponse
+      tags: [responses]
+      summary: Submit the final answers and mark the response complete
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteResponseRequest"
+      responses:
+        "200":
+          description: Completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/session:
+    post:
+      operationId: verifyAdminKey
+      tags: [admin]
+      summary: Verify the admin access key
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: Key accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSession"
+        "401":
+          description: Invalid key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /admin/summary:
+    get:
+      operationId: getAdminSummary
+      tags: [admin]
+      summary: Headline statistics, demographics breakdowns and drop-off
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSummary"
+  /admin/responses:
+    get:
+      operationId: listAdminResponses
+      tags: [admin]
+      summary: Paginated list of responses with filters
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, complete]
+        - name: sector
+          in: query
+          schema:
+            type: string
+        - name: nationality
+          in: query
+          schema:
+            type: string
+        - name: hasContact
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 25
+      responses:
+        "200":
+          description: Response list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseList"
+  /admin/skills-gap:
+    get:
+      operationId: getSkillsGap
+      tags: [admin]
+      summary: Importance vs performance per skill, B2B and B2C side by side
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: Skills gap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillsGapReport"
+  /admin/course-demand:
+    get:
+      operationId: getCourseDemand
+      tags: [admin]
+      summary: Need index and book-now share per course
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Course demand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDemandReport"
+  /admin/track-ranks:
+    get:
+      operationId: getTrackRanks
+      tags: [admin]
+      summary: Future-track ranking results
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Track ranks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrackRankReport"
+  /admin/preferences:
+    get:
+      operationId: getPreferences
+      tags: [admin]
+      summary: Option counts for every single/multi choice question
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreferenceReport"
+  /admin/matching:
+    get:
+      operationId: getMatchingResults
+      tags: [admin]
+      summary: Catalogue workshops ranked by field need x desk evidence
+      security:
+        - AdminKey: []
+      parameters:
+        - name: needWeight
+          in: query
+          description: Field-need weight in percent (default 40); other weights scale proportionally
+          schema:
+            type: integer
+            default: 40
+      responses:
+        "200":
+          description: Matching results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchingReport"
+  /admin/catalogue:
+    get:
+      operationId: listCatalogue
+      tags: [admin]
+      summary: Catalogue workshops seeded from the desk study
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: Workshops
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CatalogueWorkshop"
+  /admin/export.csv:
+    get:
+      operationId: exportResponsesCsv
+      tags: [admin]
+      summary: Download all responses as CSV
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
 components:
+  securitySchemes:
+    AdminKey:
+      type: apiKey
+      in: header
+      name: X-Admin-Key
+  parameters:
+    ResponseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    PathFilter:
+      name: path
+      in: query
+      schema:
+        $ref: "#/components/schemas/SurveyPath"
   schemas:
     HealthStatus:
       type: object
       properties:
         status:
           type: string
-      required:
-        - status
-
+      required: [status]
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    SurveyPath:
+      type: string
+      enum: [B2B, B2C]
+    ResponseStatus:
+      type: string
+      enum: [draft, complete]
+    Answers:
+      type: object
+      description: Raw answers keyed by question id (Q1..Q26). Values are strings, string arrays, or objects for matrices.
+      additionalProperties: true
+    ContactInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+    SurveyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          $ref: "#/components/schemas/ResponseStatus"
+        path:
+          oneOf:
+            - $ref: "#/components/schemas/SurveyPath"
+            - type: "null"
+        consent:
+          type: boolean
+        currentStep:
+          type: integer
+        answers:
+          $ref: "#/components/schemas/Answers"
+        contact:
+          oneOf:
+            - $ref: "#/components/schemas/ContactInfo"
+            - type: "null"
+        sourceTag:
+          type: string
+          nullable: true
+        device:
+          type: string
+          nullable: true
+        durationSec:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required: [id, status, path, consent, currentStep, answers, contact, createdAt, updatedAt]
+    CreateResponseRequest:
+      type: object
+      properties:
+        sourceTag:
+          type: string
+        device:
+          type: string
+    UpdateResponseRequest:
+      type: object
+      properties:
+        consent:
+          type: boolean
+        path:
+          $ref: "#/components/schemas/SurveyPath"
+        currentStep:
+          type: integer
+        answers:
+          $ref: "#/components/schemas/Answers"
+        contact:
+          $ref: "#/components/schemas/ContactInfo"
+    CompleteResponseRequest:
+      type: object
+      properties:
+        path:
+          $ref: "#/components/schemas/SurveyPath"
+        answers:
+          $ref: "#/components/schemas/Answers"
+        contact:
+          $ref: "#/components/schemas/ContactInfo"
+        durationSec:
+          type: integer
+      required: [path, answers]
+    AdminSession:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+    CountItem:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        count:
+          type: integer
+        pct:
+          type: number
+      required: [key, label, count, pct]
+    DailyCount:
+      type: object
+      properties:
+        date:
+          type: string
+        started:
+          type: integer
+        completed:
+          type: integer
+      required: [date, started, completed]
+    SectionDropOff:
+      type: object
+      properties:
+        step:
+          type: integer
+        label:
+          type: string
+        reached:
+          type: integer
+        stuck:
+          type: integer
+      required: [step, label, reached, stuck]
+    AdminSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        completed:
+          type: integer
+        drafts:
+          type: integer
+        completionRate:
+          type: number
+        b2b:
+          type: integer
+        b2c:
+          type: integer
+        avgDurationSec:
+          type: number
+        bookNowRespondents:
+          type: integer
+        contactsCaptured:
+          type: integer
+        byDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyCount"
+        byNationality:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byGender:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byAge:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byEducation:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        bySector:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byJobLevel:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byOrgSize:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        dropOff:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionDropOff"
+      required: [total, completed, drafts, completionRate, b2b, b2c, avgDurationSec, bookNowRespondents, contactsCaptured, byDay, byNationality, byGender, byAge, byEducation, bySector, byJobLevel, byOrgSize, dropOff]
+    ResponseList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurveyResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required: [items, total, page, pageSize]
+    SkillStats:
+      type: object
+      properties:
+        n:
+          type: integer
+        meanImportance:
+          type: number
+        meanPerformance:
+          type: number
+        meanGap:
+          type: number
+        weightedGap:
+          type: number
+      required: [n, meanImportance, meanPerformance, meanGap, weightedGap]
+    SkillGapItem:
+      type: object
+      properties:
+        skillId:
+          type: string
+        label:
+          type: string
+        all:
+          $ref: "#/components/schemas/SkillStats"
+        b2b:
+          $ref: "#/components/schemas/SkillStats"
+        b2c:
+          $ref: "#/components/schemas/SkillStats"
+      required: [skillId, label, all, b2b, b2c]
+    SkillsGapReport:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SkillGapItem"
+      required: [items]
+    CourseDemandItem:
+      type: object
+      properties:
+        courseId:
+          type: string
+        label:
+          type: string
+        groupId:
+          type: string
+        groupLabel:
+          type: string
+        shown:
+          type: integer
+        notInterested:
+          type: integer
+        future:
+          type: integer
+        bookNow:
+          type: integer
+        needIndex:
+          type: number
+          description: 0-100 (mean of 0/1/2 codes / 2 x 100)
+        bookNowShare:
+          type: number
+      required: [courseId, label, groupId, groupLabel, shown, notInterested, future, bookNow, needIndex, bookNowShare]
+    CourseDemandReport:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseDemandItem"
+      required: [items]
+    TrackRankItem:
+      type: object
+      properties:
+        trackId:
+          type: string
+        label:
+          type: string
+        n:
+          type: integer
+        meanRank:
+          type: number
+        firstPlaceShare:
+          type: number
+        score:
+          type: number
+          description: 0-100 priority score (Borda normalised)
+      required: [trackId, label, n, meanRank, firstPlaceShare, score]
+    TrackRankReport:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrackRankItem"
+      required: [items]
+    QuestionBreakdown:
+      type: object
+      properties:
+        questionId:
+          type: string
+        label:
+          type: string
+        respondents:
+          type: integer
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+      required: [questionId, label, respondents, options]
+    PreferenceReport:
+      type: object
+      properties:
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionBreakdown"
+      required: [questions]
+    CatalogueWorkshop:
+      type: object
+      properties:
+        id:
+          type: string
+        titleEn:
+          type: string
+        titleAr:
+          type: string
+        categoryId:
+          type: integer
+        categoryLabel:
+          type: string
+        tier:
+          type: string
+        days:
+          type: integer
+        top50Rank:
+          type: integer
+          nullable: true
+        evidenceScore:
+          type: number
+        marketDemandPct:
+          type: number
+        kuwaitPlansCount:
+          type: integer
+        localSupply:
+          type: string
+          enum: [None, Emerging, Established]
+        audience:
+          type: array
+          items:
+            type: string
+        shortlisted:
+          type: boolean
+      required: [id, titleEn, titleAr, categoryId, categoryLabel, tier, days, top50Rank, evidenceScore, marketDemandPct, kuwaitPlansCount, localSupply, audience, shortlisted]
+    MatchingItem:
+      type: object
+      properties:
+        workshop:
+          $ref: "#/components/schemas/CatalogueWorkshop"
+        fieldNeed:
+          type: number
+          description: 0-100 confirmed field need from linked survey items
+        fieldN:
+          type: integer
+        linkedItems:
+          type: array
+          items:
+            type: string
+        gridCell:
+          type: string
+          enum: [confirmed_priority, new_demand, evidence_led, defer]
+        compositeScore:
+          type: number
+        rank:
+          type: integer
+        rankShift:
+          type: integer
+          description: Rank change under +/-10 need-weight sensitivity test
+        supplyAction:
+          type: string
+          enum: [Build, Expand, Select]
+      required: [workshop, fieldNeed, fieldN, linkedItems, gridCell, compositeScore, rank, rankShift, supplyAction]
+    MatchingReport:
+      type: object
+      properties:
+        needWeight:
+          type: integer
+        respondents:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchingItem"
+      required: [needWeight, respondents, items]
