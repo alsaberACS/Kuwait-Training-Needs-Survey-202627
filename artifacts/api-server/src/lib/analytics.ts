@@ -1,6 +1,7 @@
 import type { ResponseRow } from "@workspace/db";
 import { catalogue, CATEGORY_LABELS, type Workshop } from "../data/catalogue";
 import { SKILLS, COURSES, COURSE_GROUPS, TRACKS, QUESTION_LABELS, SECTION_LABELS, ITEM_WORKSHOPS } from "../data/survey-items";
+import { TRAINING_TOPICS, TRAINING_MODE } from "@workspace/api-zod/training";
 
 type Answers = Record<string, unknown>;
 type Rating = { importance?: number; performance?: number };
@@ -59,7 +60,7 @@ export function summary(all: ResponseRow[]) {
     b2b: completed.filter((r) => r.path === "B2B").length,
     b2c: completed.filter((r) => r.path === "B2C").length,
     avgDurationSec: r2(mean(durations)),
-    bookNowRespondents: completed.filter((r) => Object.values(((r.answers as Answers).Q25 as Record<string, number>) ?? {}).some((v) => Number(v) === 2)).length,
+    bookNowRespondents: completed.filter((r) => (r.answers as Answers).Q25Mode !== TRAINING_MODE && Object.values(((r.answers as Answers).Q25 as Record<string, number>) ?? {}).some((v) => Number(v) === 2)).length,
     contactsCaptured: completed.filter((r) => r.contact && (r.contact.email || r.contact.phone)).length,
     byDay: [...byDayMap.entries()].sort().map(([date, v]) => ({ date, ...v })),
     byNationality: countItems(completed, single("Q1")),
@@ -112,16 +113,46 @@ export function selectedGroups(a: Answers): string[] {
   return Array.isArray(a.Q25G) ? (a.Q25G as unknown[]).map(str).filter((g) => g in COURSE_GROUPS) : [];
 }
 
+const strings = (v: unknown): string[] => Array.isArray(v) ? [...new Set(v.filter((id): id is string => typeof id === "string"))] : [];
+function chosenTopics(a: Answers): string[] {
+  if (a.Q25Mode !== TRAINING_MODE) return [];
+  const groups = selectedGroups(a);
+  return strings(a.Q25T).filter((id) => TRAINING_TOPICS.some((t) => t.id === id && groups.includes(t.group)));
+}
+
+export function topicPriorities(rows: ResponseRow[]) {
+  const answered = rows.map((r) => r.answers as Answers).filter((a) => chosenTopics(a).length > 0);
+  return TRAINING_TOPICS.map((t) => {
+    const eligible = answered.filter((a) => selectedGroups(a).includes(t.group));
+    const selected = eligible.filter((a) => chosenTopics(a).includes(t.id)).length;
+    return { topicId: t.id, label: t.label, groupId: t.group, respondents: eligible.length,
+      selected, selectedShare: eligible.length ? r2(selected / eligible.length * 100) : 0, courseIds: t.courses };
+  });
+}
+
+export function courseEnquiries(rows: ResponseRow[]) {
+  const short = rows.map((r) => r.answers as Answers).filter((a) => a.Q25Mode === TRAINING_MODE);
+  return Object.entries(COURSES).map(([courseId, c]) => {
+    const shown = short.filter((a) => strings(a.Q25Shown).includes(courseId));
+    const enquiries = shown.filter((a) => strings(a.Q25I).includes(courseId)).length;
+    return { courseId, label: c.label, groupId: c.group, recommended: shown.length, enquiries,
+      enquiryShare: shown.length ? r2(enquiries / shown.length * 100) : 0 };
+  });
+}
+
 export function courseDemand(rows: ResponseRow[]) {
   // Only respondents who reached the gate question count toward track-selection shares.
   const gated = rows.map((r) => selectedGroups(r.answers as Answers)).filter((g) => g.length > 0);
   return {
+    topics: topicPriorities(rows),
+    enquiries: courseEnquiries(rows),
     groups: Object.entries(COURSE_GROUPS).map(([groupId, label]) => {
       const selected = gated.filter((g) => g.includes(groupId)).length;
       return { groupId, label, respondents: gated.length, selected, selectedShare: gated.length ? r2((selected / gated.length) * 100) : 0 };
     }),
     items: Object.entries(COURSES).map(([courseId, c]) => {
       const codes = rows
+        .filter((r) => (r.answers as Answers).Q25Mode !== TRAINING_MODE)
         .map((r) => (((r.answers as Answers).Q25 as Record<string, unknown>) ?? {})[courseId])
         .filter((v) => v === 0 || v === 1 || v === 2) as number[];
       const shown = codes.length;
@@ -163,7 +194,7 @@ export function trackRanks(rows: ResponseRow[]) {
 }
 
 export function preferences(rows: ResponseRow[]) {
-  const multis = new Set(["Q10", "Q11", "Q15", "Q25G", "Q26"]);
+  const multis = new Set(["Q10", "Q11", "Q15", "Q25G", "Q25T", "Q25I", "Q26"]);
   return {
     questions: Object.entries(QUESTION_LABELS).map(([questionId, label]) => {
       const pick = multis.has(questionId) ? multi(questionId) : single(questionId);
@@ -195,6 +226,8 @@ function itemNeeds(rows: ResponseRow[]) {
 export function matching(rows: ResponseRow[], needWeight: number) {
   const nw = Math.max(0, Math.min(100, needWeight));
   const needs = itemNeeds(rows);
+  const topics = topicPriorities(rows);
+  const enquiries = courseEnquiries(rows);
   const compute = (weight: number) => {
     const rest = (100 - weight) / 60; // scale the 30/20/10 remainder proportionally
     return catalogue.map((w) => {
@@ -204,14 +237,24 @@ export function matching(rows: ResponseRow[], needWeight: number) {
       const needVals = useItems.map((i) => needs.get(i)).filter((v): v is { need: number; n: number } => !!v && v.n > 0);
       const fieldNeed = needVals.length ? r2(Math.max(...needVals.map((v) => v.need))) : 0;
       const fieldN = needVals.length ? Math.max(...needVals.map((v) => v.n)) : 0;
+      // Topic priorities suggest workshop relevance; they are not workshop ratings.
+      const courseIds = primary.filter((id) => id in COURSES);
+      const linkedTopics = topics.filter((t) => t.courseIds.some((id) => courseIds.includes(id)));
+      const topic = linkedTopics.sort((a, b) => b.selectedShare - a.selectedShare)[0];
+      const topicPriorityShare = topic?.selectedShare ?? 0;
+      const topicRespondents = topic?.respondents ?? 0;
+      const topicSelected = topic?.selected ?? 0;
+      const enquiryCount = enquiries.filter((c) => courseIds.includes(c.courseId)).reduce((n, c) => n + c.enquiries, 0);
+      const planningNeed = Math.max(fieldNeed, topicPriorityShare);
       const evidence = w.evidenceScore ?? 0;
       const strategic = Math.min(100, (w.audience.length / 4) * 60 + (w.kuwaitPlansCount > 0 ? 20 : 0) + (w.top50Rank ? 20 : 0));
       const readiness = READINESS[w.localSupply] ?? 20;
-      const composite = r2((fieldNeed * weight + evidence * 30 * rest + strategic * 20 * rest + readiness * 10 * rest) / 100);
+      const composite = r2((planningNeed * weight + evidence * 30 * rest + strategic * 20 * rest + readiness * 10 * rest) / 100);
       const strongEvidence = evidence >= 60 || (w.top50Rank !== null && w.top50Rank <= 50 && w.shortlisted);
       const confirmedNeed = fieldN > 0 && fieldNeed >= 50;
       const gridCell = strongEvidence && confirmedNeed ? "confirmed_priority" : confirmedNeed ? "new_demand" : strongEvidence ? "evidence_led" : "defer";
-      return { workshop: toCatalogueDto(w), fieldNeed, fieldN, linkedItems: linked, gridCell, compositeScore: composite, supplyAction: SUPPLY_ACTION[w.localSupply] ?? "Build" };
+      return { workshop: toCatalogueDto(w), fieldNeed, fieldN, topicPriorityShare, topicRespondents, topicSelected, enquiryCount,
+        linkedItems: linked, gridCell, compositeScore: composite, supplyAction: SUPPLY_ACTION[w.localSupply] ?? "Build" };
     });
   };
   const rank = (items: ReturnType<typeof compute>) => {
@@ -237,7 +280,7 @@ export function toCsv(rows: ResponseRow[]): string {
     const s = v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const qs = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
+  const qs = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25Mode", "Q25G", "Q25T", "Q25Shown", "Q25I", "Q25", "Q26"];
   const head = ["id", "status", "path", "created_at", "completed_at", "duration_sec", "device", "source_tag", "contact_name", "contact_email", "contact_phone", ...qs];
   const lines = rows.map((r) => {
     const a = r.answers as Answers;

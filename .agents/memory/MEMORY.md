@@ -1,3 +1,4 @@
 - [Admin access model](admin-auth.md) — /admin is gated by a shared ADMIN_ACCESS_KEY secret (Bearer or X-Admin-Key), chosen over Clerk for speed; upgrade path noted.
 - [Catalogue seed caveats](catalogue-seed.md) — 70 workshops were LLM-extracted from PDF text; day totals and the shortlisted flag are approximate, verify before quoting.
 - [Codegen dom.iterable quirk](codegen-dom-iterable.md) — orval client calls Headers.entries(); api-client-react tsconfig lib must include dom.iterable or codegen typecheck fails.
+- [Short survey priorities](short-survey-priorities.md) — the user rejected 70 workshop ratings as too slow; preserve a short topic-first assessment and separate enquiries from reservations.

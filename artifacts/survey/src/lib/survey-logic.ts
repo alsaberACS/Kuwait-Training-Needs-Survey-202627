@@ -1,4 +1,5 @@
 import { Q, SKILLS, ALL_COURSES, COURSE_GROUPS, TRACKS, type Answers, type Path, type CourseGroup } from "./survey-definition";
+import { shortTrainingErrors, TRAINING_MODE } from "@workspace/api-zod/training";
 
 export const STEP_INTRO = 0;
 export const STEP_S1 = 1;
@@ -10,7 +11,7 @@ export const PROGRESS_LABELS = (path?: Path) => [
   "البيانات الديموغرافية",
   path === "B2C" ? "مسار الأفراد" : path === "B2B" ? "مسار المؤسسات" : "مسارك",
   "التوجهات والاحتياجات",
-  "التواصل والحجز",
+  "التواصل والمتابعة",
 ];
 
 export function suggestPath(a: Answers): Path | undefined {
@@ -22,7 +23,7 @@ export function suggestPath(a: Answers): Path | undefined {
 export function questionNumbers(path?: Path): Record<string, number> {
   const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7",
     ...(path === "B2C" ? ["Q15", "Q18"] : ["Q8", "Q9", "Q10", "Q11", "Q14"]),
-    "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
+    "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25T", "Q25I", "Q26"];
   return Object.fromEntries(order.map((id, i) => [id, i + 1]));
 }
 
@@ -82,15 +83,14 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
   if (step === STEP_S4) {
     (["Q19", "Q20", "Q21", "Q22", "Q23"] as const).forEach((k) => { if (!a[k]) e[k] = REQ; });
     if (!a.Q24 || a.Q24.length !== 6) e.Q24 = "يرجى ترتيب المسارات";
-    if (!a.Q25G?.length) e.Q25G = "اختر مساراً تدريبياً واحداً على الأقل لعرض الدورات";
-    const m = selectedCourses(a).filter((c) => a.Q25?.[c.id] === undefined).length;
-    if (m) e.Q25 = `بقي ${m} من الدورات دون اختيار`;
+    Object.assign(e, shortTrainingErrors(a));
     if (!a.Q26?.length) e.Q26 = "اختر عنصراً واحداً على الأقل (حتى عنصرين)";
   }
   return e;
 }
 
-export const bookedCourses = (a: Answers) => ALL_COURSES.filter((c) => a.Q25?.[c.id] === 2);
+export const bookedCourses = (a: Answers) => ALL_COURSES.filter((c) =>
+  a.Q25Mode === TRAINING_MODE ? a.Q25I?.includes(c.id) : a.Q25?.[c.id] === 2);
 
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

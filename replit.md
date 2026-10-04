@@ -20,10 +20,15 @@ Arabic (RTL) field survey "استبانة دراسة التموضع التناف
 
 ## Answer shape (answers JSONB)
 
-Q1–Q4, Q6–Q9, Q19–Q23 → option id string · Q5 → `{ sector, sub, other }` · Q10, Q11, Q15, Q26 → option id array · Q14/Q18 → `{ S1: { importance, performance }, … }` · Q24 → ordered track id array · Q25G → selected course-group id array (G1–G6, the "المسارات التدريبية" gate) · Q25 → `{ C1: 0|1|2, … }` (0 غير مهتم, 1 مهتم مستقبلاً, 2 أرغب بالحجز فوراً) **only for courses in the selected groups** — the client prunes answers when a group is deselected.
+Q1–Q4, Q6–Q9, Q19–Q23 → option id string · Q5 → `{ sector, sub, other }` · Q10, Q11, Q15, Q26 → option id array · Q14/Q18 → `{ S1: { importance, performance }, … }` · Q24 → ordered track id array.
+
+New short training flow: `Q25Mode: "topics-v1"` · Q25G → 1–2 priority course-group ids (G1–G6) · Q25T → 1–3 topic ids **total** from the chosen groups · Q25Shown → up to five recommended course ids actually displayed · Q25I → optional course ids requesting details (not reservations). Shared topic mapping and round-robin recommendation logic live in `@workspace/api-zod/training`. Changing groups/topics prunes downstream choices. Legacy drafts at the contact step revisit the new training questions; completed historical records are never migrated.
+
+Legacy Q25 remains `{ C1: 0|1|2, … }` (0 غير مهتم, 1 مهتم مستقبلاً, 2 أرغب بالحجز فوراً), but is no longer asked or written in short-mode records. Course-demand `items` and the summary booking count refer only to historical ratings; `topics` and `enquiries` report the new signals separately.
 
 ## Conventions
 
 - Display numbering is sequential per path; original question ids (which skip Q12/13/16/17) are kept internally.
-- Never treat not-shown or dropped-off responses as "no need" — course rates use only respondents who saw the course (i.e. whose Q25 contains it). Track-selection shares (`groups` in the course-demand report) use only respondents who answered Q25G.
+- Never treat not-shown or dropped-off responses as "no need". Historical course rates use valid Q25 ratings only. Topic shares use participants who answered priorities and chose the topic's track. Enquiry shares use Q25Shown exposures; no enquiry is not disinterest. Track shares use participants who answered Q25G.
+- Workshop-level topic relevance is inferred, not an individual workshop rating. Matching uses `max(linked-item field need, topic priority share)` for the planning component; enquiries are surfaced separately, not scored. Topic-only signals do not change the four-cell confirmation classification.
 - Keep the six survey tracks and original course ids/wording stable when expanding the catalogue, to avoid reinterpreting historical responses. Assign new workshops by topic rather than copying the PDF's category structure (e.g. HR analytics belongs under HR). Every catalogue workshop now has a primary course link; legacy secondary links remain for interpretation.

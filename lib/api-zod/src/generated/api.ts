@@ -315,6 +315,23 @@ export const GetCourseDemandQueryParams = zod.object({
 })
 
 export const GetCourseDemandResponse = zod.object({
+  "topics": zod.array(zod.object({
+  "topicId": zod.string(),
+  "label": zod.string(),
+  "groupId": zod.string(),
+  "respondents": zod.number().int().describe('Answered topic priorities and selected this topic\'s track'),
+  "selected": zod.number().int(),
+  "selectedShare": zod.number(),
+  "courseIds": zod.array(zod.string())
+})),
+  "enquiries": zod.array(zod.object({
+  "courseId": zod.string(),
+  "label": zod.string(),
+  "groupId": zod.string(),
+  "recommended": zod.number().int().describe('Participants shown this workshop as a suggestion'),
+  "enquiries": zod.number().int().describe('Explicit requests for workshop details, not confirmed bookings'),
+  "enquiryShare": zod.number()
+})),
   "groups": zod.array(zod.object({
   "groupId": zod.string(),
   "label": zod.string(),
@@ -409,6 +426,10 @@ export const GetMatchingResultsResponse = zod.object({
 }),
   "fieldNeed": zod.number().describe('0-100 confirmed field need from linked survey items'),
   "fieldN": zod.number().int(),
+  "topicPriorityShare": zod.number().describe('Inferred topic priority, not a workshop rating'),
+  "topicRespondents": zod.number().int(),
+  "topicSelected": zod.number().int(),
+  "enquiryCount": zod.number().int(),
   "linkedItems": zod.array(zod.string()),
   "gridCell": zod.enum(['confirmed_priority', 'new_demand', 'evidence_led', 'defer']),
   "compositeScore": zod.number(),

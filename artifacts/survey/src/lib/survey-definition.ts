@@ -1,3 +1,5 @@
+import { TRAINING_TOPICS } from "@workspace/api-zod/training";
+
 export type Path = "B2B" | "B2C";
 export interface Option { id: string; label: string; exclusive?: boolean; other?: boolean; description?: string; suggested?: boolean }
 export interface Skill { id: string; label: string }
@@ -11,7 +13,7 @@ export const SURVEY_INTRO =
 export const CONSENT_TEXT =
   "أوافق على المشاركة في هذه الدراسة، وأتفهم أن البيانات ستُستخدم لأغراض البحث وتطوير الخدمات التدريبية فقط.";
 export const CONTACT_INTRO =
-  'هذا القسم اختياري تماماً. إذا كنت قد اخترت "أرغب بالحجز فوراً" في أي من الدورات السابقة، أو ترغب في تلقي جدول الدورات القادمة والحصول على خصم التسجيل المُبكر، يُرجى تزويدنا ببياناتك ليقوم فريق المركز بالتواصل معك.';
+  "هذا القسم اختياري تماماً. إذا طلبت تفاصيل دورة مقترحة، أو ترغب في تلقي جدول الدورات القادمة، اترك وسيلة تواصل ليتمكن فريق المركز من متابعتك. طلب التفاصيل لا يُعد حجزاً مؤكداً.";
 export const THANK_YOU_TEXT =
   "شُـكراً جزيلاً لمساهمتكم القيّمة في رسم مستقبل التدريب في دولة الكويت. تطلعاتكم هي بوصلتنا نحو التميز.";
 export const THANK_YOU_SIGN = "مع تحيات، فريق البحث";
@@ -21,7 +23,7 @@ export const SECTION_TITLES = {
   s2: "القسم الثاني: مسار الشركات والمؤسسات (B2B)",
   s3: "القسم الثالث: مسار الأفراد والمهنيين (B2C)",
   s4: "القسم الرابع: التوجهات والاحتياجات المباشرة",
-  s5: "القسم الخامس: بيانات التواصل والحجز (اختياري)",
+  s5: "القسم الخامس: بيانات التواصل والمتابعة (اختياري)",
 } as const;
 
 export const CONTACT_FIELDS = {
@@ -177,10 +179,12 @@ export const Q = {
   },
   Q24: { id: "Q24", text: "ترتيب المسارات المستقبلية", hint: "رتّب المسارات من 1 (الأهم) إلى 6" },
   Q25G: {
-    id: "Q25G", text: "ما المسارات التدريبية التي تهمك؟",
-    hint: "اختر مساراً واحداً أو أكثر، وسنعرض لك دورات المسارات التي اخترتها فقط.",
+    id: "Q25G", text: "ما أهم مسارين تدريبيين بالنسبة لك حالياً؟",
+    hint: "اختر مساراً واحداً أو مسارين فقط؛ سنعرض لك موضوعاتهما بدلاً من تقييم كل دورة.",
     options: Object.entries(GROUP_LABELS).map(([id, label]) => o(id, label)),
   },
+  Q25T: { id: "Q25T", text: "ما أولوياتك التدريبية ضمن المسارات المختارة؟", hint: "اختر حتى ثلاثة موضوعات إجمالاً، وليس ثلاثة لكل مسار." },
+  Q25I: { id: "Q25I", text: "هل ترغب في الحصول على تفاصيل أي من هذه الدورات؟", hint: "اختياري: هذه مقترحات بناءً على أولوياتك، وليست حجزاً مؤكداً. يمكنك المتابعة دون اختيار أي دورة." },
   Q25: {
     id: "Q25", text: "ما مدى رغبتك في التسجيل بالدورات التدريبية التالية خلال الـ 6 أشهر القادمة؟",
     levels: ["غير مهتم", "مهتم مستقبلاً", "أرغب بالحجز فوراً"] as const,
@@ -347,7 +351,9 @@ export const SKILL_LABELS: Record<string, string> = Object.fromEntries(SKILLS.ma
 export const TRACK_LABELS: Record<string, string> = Object.fromEntries(TRACKS.map((s) => [s.id, s.label]));
 export const COURSE_LABELS: Record<string, string> = Object.fromEntries(ALL_COURSES.map((s) => [s.id, s.label]));
 export const LEVEL_LABELS = Q.Q25.levels;
-export const optionLabel = (qid: string, id: string) => OPTION_LABELS[qid]?.[id] ?? id;
+export const TOPIC_LABELS: Record<string, string> = Object.fromEntries(TRAINING_TOPICS.map((t) => [t.id, t.label]));
+export const optionLabel = (qid: string, id: string) =>
+  (qid === "Q25T" ? TOPIC_LABELS[id] : qid === "Q25I" || qid === "Q25Shown" ? COURSE_LABELS[id] : OPTION_LABELS[qid]?.[id]) ?? id;
 
 /* ---------- answer types ---------- */
 export type Rating = { importance?: number; performance?: number };
@@ -358,4 +364,5 @@ export interface Answers {
   Q15?: string[]; Q18?: Record<string, Rating>;
   Q19?: string; Q20?: string; Q21?: string; Q22?: string; Q23?: string;
   Q24?: string[]; Q25G?: string[]; Q25?: Record<string, 0 | 1 | 2>; Q26?: string[];
+  Q25Mode?: string; Q25T?: string[]; Q25I?: string[]; Q25Shown?: string[];
 }

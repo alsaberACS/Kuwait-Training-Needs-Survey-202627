@@ -175,7 +175,31 @@ export interface CourseDemandGroup {
   selectedShare: number;
 }
 
+export interface TrainingTopicPriority {
+  topicId: string;
+  label: string;
+  groupId: string;
+  /** Answered topic priorities and selected this topic's track */
+  respondents: number;
+  selected: number;
+  selectedShare: number;
+  courseIds: string[];
+}
+
+export interface CourseEnquiry {
+  courseId: string;
+  label: string;
+  groupId: string;
+  /** Participants shown this workshop as a suggestion */
+  recommended: number;
+  /** Explicit requests for workshop details, not confirmed bookings */
+  enquiries: number;
+  enquiryShare: number;
+}
+
 export interface CourseDemandReport {
+  topics: TrainingTopicPriority[];
+  enquiries: CourseEnquiry[];
   groups: CourseDemandGroup[];
   items: CourseDemandItem[];
 }
@@ -255,6 +279,11 @@ export interface MatchingItem {
   /** 0-100 confirmed field need from linked survey items */
   fieldNeed: number;
   fieldN: number;
+  /** Inferred topic priority, not a workshop rating */
+  topicPriorityShare: number;
+  topicRespondents: number;
+  topicSelected: number;
+  enquiryCount: number;
   linkedItems: string[];
   gridCell: MatchingItemGridCell;
   compositeScore: number;

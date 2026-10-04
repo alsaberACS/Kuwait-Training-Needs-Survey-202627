@@ -633,6 +633,14 @@ components:
     CourseDemandReport:
       type: object
       properties:
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrainingTopicPriority"
+        enquiries:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseEnquiry"
         groups:
           type: array
           items:
@@ -641,7 +649,46 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CourseDemandItem"
-      required: [groups, items]
+      required: [groups, items, topics, enquiries]
+    TrainingTopicPriority:
+      type: object
+      properties:
+        topicId:
+          type: string
+        label:
+          type: string
+        groupId:
+          type: string
+        respondents:
+          type: integer
+          description: Answered topic priorities and selected this topic's track
+        selected:
+          type: integer
+        selectedShare:
+          type: number
+        courseIds:
+          type: array
+          items:
+            type: string
+      required: [topicId, label, groupId, respondents, selected, selectedShare, courseIds]
+    CourseEnquiry:
+      type: object
+      properties:
+        courseId:
+          type: string
+        label:
+          type: string
+        groupId:
+          type: string
+        recommended:
+          type: integer
+          description: Participants shown this workshop as a suggestion
+        enquiries:
+          type: integer
+          description: Explicit requests for workshop details, not confirmed bookings
+        enquiryShare:
+          type: number
+      required: [courseId, label, groupId, recommended, enquiries, enquiryShare]
     TrackRankItem:
       type: object
       properties:
@@ -735,6 +782,15 @@ components:
           description: 0-100 confirmed field need from linked survey items
         fieldN:
           type: integer
+        topicPriorityShare:
+          type: number
+          description: Inferred topic priority, not a workshop rating
+        topicRespondents:
+          type: integer
+        topicSelected:
+          type: integer
+        enquiryCount:
+          type: integer
         linkedItems:
           type: array
           items:
@@ -752,7 +808,7 @@ components:
         supplyAction:
           type: string
           enum: [Build, Expand, Select]
-      required: [workshop, fieldNeed, fieldN, linkedItems, gridCell, compositeScore, rank, rankShift, supplyAction]
+      required: [workshop, fieldNeed, fieldN, topicPriorityShare, topicRespondents, topicSelected, enquiryCount, linkedItems, gridCell, compositeScore, rank, rankShift, supplyAction]
     MatchingReport:
       type: object
       properties:
