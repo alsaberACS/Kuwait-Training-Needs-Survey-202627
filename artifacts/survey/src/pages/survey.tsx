@@ -4,18 +4,17 @@ import { Lock, Clock, ShieldCheck, ArrowRight, Loader2, WifiOff, RefreshCw, Spar
 import {
   useCreateResponse, useGetResponse, getGetResponseQueryKey, useUpdateResponse, useCompleteResponse,
 } from "@workspace/api-client-react";
-import { topicOptions, normalizeShortTraining, TRAINING_MODE } from "@workspace/api-zod/training";
 import { cn } from "@/lib/utils";
 import {
-  Q, Q5_SUB, COURSE_LABELS, SKILLS, TRACKS, SURVEY_TITLE, SURVEY_INTRO, CONSENT_TEXT, CONTACT_FIELDS,
+  Q, Q5_SUB, SKILLS, TRACKS, SURVEY_TITLE, SURVEY_INTRO, CONSENT_TEXT, CONTACT_INTRO, CONTACT_FIELDS,
   THANK_YOU_TEXT, THANK_YOU_SIGN, SECTION_TITLES, type Answers, type Path,
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-  orderedCourseGroups, suggestedGroups, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone,
+  orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone,
 } from "@/lib/survey-logic";
 import {
-  QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, TopicPicker, NextIcon,
+  QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
 } from "@/components/survey/controls";
 
 const LS_KEY = "kw-tna-response-id";
@@ -40,7 +39,7 @@ function Brand({ light }: { light?: boolean }) {
 }
 
 function Progress({ step, path, saving }: { step: number; path?: Path; saving: boolean }) {
-  const labels = PROGRESS_LABELS(path).map((l) => (l === "التواصل والحجز" ? "التواصل والمتابعة" : l));
+  const labels = PROGRESS_LABELS(path);
   const idx = step - 1;
   const pct = Math.min(100, ((idx + 0.5) / labels.length) * 100);
   return (
@@ -123,10 +122,7 @@ export default function SurveyPage() {
     setAnswers((r.answers ?? {}) as Answers);
     setConsent(true);
     if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
-    const savedAnswers = (r.answers ?? {}) as Answers;
-    const resumeStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5);
-    // A legacy draft already at contact must visit the new priority questions.
-    setStep(resumeStep === STEP_S5 && savedAnswers.Q25Mode !== TRAINING_MODE ? STEP_S4 : resumeStep);
+    setStep(Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5));
     setResumeHandled(true);
   };
   const startFresh = () => {
@@ -147,34 +143,20 @@ export default function SurveyPage() {
     () => groups.map((g) => ({
       id: g.id,
       label: g.label,
-      description: `${topicOptions([g.id]).length} موضوعات`,
+      description: `${g.courses.length} دورات`,
       suggested: suggested.includes(g.id),
     })),
     [groups, suggested.join()], // eslint-disable-line react-hooks/exhaustive-deps
   );
-  const chosenTopics = answers.Q25T ?? [];
-  const topicList = useMemo(() => topicOptions(answers.Q25G ?? []), [answers.Q25G]);
-  const shownIds = answers.Q25Shown ?? [];
-  const clearTrainingErrors = () => setErrors((e) => { if (!e.Q25G && !e.Q25T && !e.Q25I) return e; const n = { ...e }; delete n.Q25G; delete n.Q25T; delete n.Q25I; return n; });
+  const chosenGroups = selectedCourseGroups(answers);
+  const chosenCourseCount = chosenGroups.reduce((n, g) => n + g.courses.length, 0);
   const setGroups = (ids: string[]) => {
-    setAnswers((a) => normalizeShortTraining({ ...a, Q25G: ids.slice(0, 2) }));
-    clearTrainingErrors();
+    setAnswers((a) => ({ ...a, Q25G: ids, Q25: pruneCourseAnswers(a.Q25, ids) }));
+    setErrors((e) => { if (!e.Q25G && !e.Q25) return e; const n = { ...e }; delete n.Q25G; delete n.Q25; return n; });
   };
-  const setTopics = (ids: string[]) => {
-    setAnswers((a) => normalizeShortTraining({ ...a, Q25T: ids }));
-    clearTrainingErrors();
-  };
-  const setEnquiries = (ids: string[]) => {
-    setAnswers((a) => normalizeShortTraining({ ...a, Q25I: ids }));
-    clearTrainingErrors();
-  };
-  const skipEnquiries = () => setAnswers((a) => ({ ...normalizeShortTraining(a), Q25I: [] }));
-  const training = (a: Answers): Answers => (a.Q7 ? normalizeShortTraining(a) : a);
 
   useEffect(() => {
-    if (step === STEP_S4) {
-      setAnswers((a) => normalizeShortTraining({ ...a, Q24: a.Q24 ?? defaultTrackOrder() }));
-    }
+    if (step === STEP_S4 && !answers.Q24) set("Q24", defaultTrackOrder());
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [step, done]); // instant: the 0.3s section crossfade should land on the new section, not mid-scroll
@@ -197,11 +179,9 @@ export default function SurveyPage() {
 
   const save = async (nextStep: number) => {
     if (!responseId) return;
-    const out = nextStep > STEP_S4 ? training(answers) : answers;
-    if (out !== answers) setAnswers(out);
     await updateM.mutateAsync({
       id: responseId,
-      data: { answers: out as Record<string, unknown>, path: answers.Q7, currentStep: nextStep, consent: true },
+      data: { answers: answers as Record<string, unknown>, path: answers.Q7, currentStep: nextStep, consent: true },
     });
   };
 
@@ -245,7 +225,7 @@ export default function SurveyPage() {
     try {
       await completeM.mutateAsync({
         id: responseId,
-        data: { path: answers.Q7, answers: training(answers) as Record<string, unknown>, contact: c, durationSec: Math.round((Date.now() - started) / 1000) },
+        data: { path: answers.Q7, answers: answers as Record<string, unknown>, contact: c, durationSec: Math.round((Date.now() - started) / 1000) },
       });
       localStorage.removeItem(LS_KEY);
       localStorage.removeItem(LS_START);
@@ -431,32 +411,19 @@ export default function SurveyPage() {
                     <RankList tracks={TRACKS} value={answers.Q24 ?? defaultTrackOrder()} onChange={(v) => set("Q24", v)} />
                   </QuestionShell>
                   <QuestionShell id="Q25G" num={nums.Q25G} title={Q.Q25G.text} hint={Q.Q25G.hint} error={errors.Q25G}>
-                    <MultiChoice qid="Q25G" cols={2} max={2} options={groupOptions} value={answers.Q25G} onChange={setGroups} />
+                    <MultiChoice qid="Q25G" cols={2} options={groupOptions} value={answers.Q25G} onChange={setGroups} />
                   </QuestionShell>
-                  <QuestionShell id="Q25T" num={nums.Q25T} title={Q.Q25T.text} hint={Q.Q25T.hint} error={errors.Q25T}>
-                    {topicList.length ? (
-                      <TopicPicker topics={topicList} value={chosenTopics} max={3} onChange={setTopics} />
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground" data-testid="text-topics-placeholder">
-                        اختر مساراً واحداً على الأقل لتظهر لك موضوعاته هنا.
-                      </div>
-                    )}
-                  </QuestionShell>
-                  <QuestionShell id="Q25I" optional num={nums.Q25I} title={Q.Q25I.text} hint={Q.Q25I.hint} error={errors.Q25I}>
-                    {shownIds.length ? (
-                      <div>
-                        <MultiChoice qid="Q25I" options={shownIds.map((id) => ({ id, label: COURSE_LABELS[id] ?? id }))} value={answers.Q25I} onChange={setEnquiries} />
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                          <span>طلب التفاصيل لا يعني الحجز، وسيتواصل معك المركز للمتابعة فقط.</span>
-                          <button type="button" onClick={skipEnquiries} data-testid="button-skip-Q25I"
-                            className="rounded-full border border-border px-4 py-2 font-medium text-foreground hover:bg-muted">
-                            لا أرغب بتفاصيل الآن
-                          </button>
-                        </div>
-                      </div>
+                  <QuestionShell
+                    id="Q25" num={nums.Q25} title={Q.Q25.text} error={errors.Q25}
+                    hint={chosenGroups.length
+                      ? `نعرض لك ${chosenCourseCount} دورة ضمن ${chosenGroups.length === 1 ? "المسار الذي اخترته" : "المسارات التي اخترتها"} فقط. غيّر اختيار المسارات أعلاه في أي وقت.`
+                      : "اختر مساراً تدريبياً واحداً على الأقل في السؤال السابق لتظهر دوراته هنا."}
+                  >
+                    {chosenGroups.length ? (
+                      <CourseMatrix groups={chosenGroups} value={answers.Q25} onChange={(v) => set("Q25", v)} showMissing={!!errors.Q25} />
                     ) : (
                       <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground" data-testid="text-courses-placeholder">
-                        اختر موضوعاً واحداً على الأقل لنقترح عليك ما يناسبه من الدورات.
+                        لم تختر أي مسار بعد — ستظهر الدورات هنا فور اختيارك للمسارات التي تهمك.
                       </div>
                     )}
                   </QuestionShell>
@@ -469,17 +436,17 @@ export default function SurveyPage() {
 
             {step === STEP_S5 && (
               <>
-                <SectionHead kicker="04" title="القسم الخامس: بيانات التواصل والمتابعة (اختياري)" note="هذا القسم اختياري تماماً. اترك بياناتك إذا رغبت في تلقي تفاصيل الدورات التي اخترتها أو جدول الدورات القادمة، وسيتواصل معك فريق المركز للمتابعة." />
+                <SectionHead kicker="04" title={SECTION_TITLES.s5} note={CONTACT_INTRO} />
                 {booked.length > 0 ? (
                   <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="relative mb-5 overflow-hidden rounded-2xl ink-panel p-6" data-testid="card-booked">
                     <div className="absolute -end-10 -top-10 h-40 w-40 sadu opacity-10 rotate-12" />
-                    <p className="flex items-center gap-2 text-sm font-semibold text-accent"><Bookmark className="h-4 w-4" /> طلبت تفاصيل {booked.length} {booked.length === 1 ? "دورة" : "دورات"}</p>
+                    <p className="flex items-center gap-2 text-sm font-semibold text-accent"><Bookmark className="h-4 w-4" /> اخترت الحجز الفوري لـ {booked.length} {booked.length === 1 ? "دورة" : "دورات"}</p>
                     <ul className="mt-3 grid gap-2">
                       {booked.map((c) => (
                         <li key={c.id} className="flex items-start gap-2 rounded-lg bg-white/[.06] px-3 py-2 text-[15px]"><Check className="mt-1 h-4 w-4 shrink-0 text-accent" />{c.label}</li>
                       ))}
                     </ul>
-                    <p className="mt-4 text-sm leading-relaxed text-white/80">هذا طلب تفاصيل وليس حجزاً مؤكداً. اترك وسيلة تواصل واحدة على الأقل ليرسل لك فريق المركز التفاصيل ويتابع معك.</p>
+                    <p className="mt-4 text-sm leading-relaxed text-white/80">لنحجز لك مقعداً في أقرب دفعة، اترك وسيلة تواصل واحدة على الأقل وسيتواصل معك فريق المركز مباشرة.</p>
                   </motion.div>
                 ) : (
                   <div className="mb-5 rounded-2xl border border-dashed border-accent/50 bg-accent/[.06] p-5 text-sm leading-relaxed">
@@ -622,7 +589,7 @@ function ResumeSkeleton() {
 }
 
 function ResumePrompt({ step, path, onResume, onFresh }: { step: number; path?: Path; onResume: () => void; onFresh: () => void }) {
-  const labels = PROGRESS_LABELS(path).map((l) => (l === "التواصل والحجز" ? "التواصل والمتابعة" : l));
+  const labels = PROGRESS_LABELS(path);
   const s = Math.min(Math.max(step, 1), 4);
   return (
     <div className="min-h-[100dvh] paper-bg grain flex items-center justify-center p-5">

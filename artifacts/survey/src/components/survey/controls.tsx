@@ -6,8 +6,8 @@ import type { Option, Rating, Skill, Track, CourseGroup } from "@/lib/survey-def
 import { LEVEL_LABELS } from "@/lib/survey-definition";
 
 export function QuestionShell({
-  num, title, hint, error, children, id, aside, optional,
-}: { optional?: boolean; num: number; title: string; hint?: ReactNode; error?: string; children: ReactNode; id: string; aside?: ReactNode }) {
+  num, title, hint, error, children, id, aside,
+}: { num: number; title: string; hint?: ReactNode; error?: string; children: ReactNode; id: string; aside?: ReactNode }) {
   return (
     <motion.section
       id={`q-${id}`}
@@ -26,7 +26,7 @@ export function QuestionShell({
         </span>
         <div className="flex-1">
           <h3 className="text-lg sm:text-xl font-semibold leading-relaxed text-foreground">
-            {title} {optional ? <span className="rounded-full bg-muted px-2 py-0.5 align-middle text-xs font-medium text-muted-foreground">اختياري</span> : <span className="text-accent" aria-label="مطلوب">*</span>}
+            {title} <span className="text-accent" aria-label="مطلوب">*</span>
           </h3>
           {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
         </div>
@@ -314,45 +314,6 @@ export function CourseMatrix({
           </motion.div>
         );
       })}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-export function TopicPicker({
-  topics, value, max, onChange,
-}: { topics: { id: string; group: string; label: string }[]; value: string[]; max: number; onChange: (v: string[]) => void }) {
-  const [full, setFull] = useState(false);
-  const toggle = (id: string) => {
-    setFull(false);
-    if (value.includes(id)) return onChange(value.filter((v) => v !== id));
-    if (value.length >= max) { setFull(true); return; }
-    onChange([...value, id]);
-  };
-  return (
-    <div>
-      <div className="mb-3 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">اختر حتى {max} موضوعات إجمالاً</span>
-        <span className="flex items-center gap-1" data-testid="counter-Q25T">
-          {Array.from({ length: max }).map((_, i) => (
-            <span key={i} className={cn("h-2 w-6 rounded-full transition-colors", i < value.length ? "bg-accent" : "bg-muted")} />
-          ))}
-          <span className="ms-2 font-medium tabular-nums">{value.length}/{max}</span>
-        </span>
-      </div>
-      <div className="grid gap-2.5 sm:grid-cols-2">
-        {topics.map((t) => (
-          <OptionCard key={t.id} square label={t.label} selected={value.includes(t.id)} onClick={() => toggle(t.id)}
-            testId={`option-Q25T-${t.id}`} disabled={value.length >= max && !value.includes(t.id)} />
-        ))}
-      </div>
-      <AnimatePresence>
-        {full && (
-          <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-            className="mt-3 overflow-hidden rounded-lg bg-accent/15 px-3 py-2 text-sm text-[hsl(32_70%_28%)]">
-            وصلت إلى ثلاثة موضوعات. ألغِ أحدها أولاً إذا أردت تغييره.
-          </motion.p>
-        )}
       </AnimatePresence>
     </div>
   );

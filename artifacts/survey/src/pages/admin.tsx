@@ -14,7 +14,6 @@ import {
   getGetMatchingResultsQueryKey, useListCatalogue, getListCatalogueQueryKey, useExportResponsesCsv, getExportResponsesCsvQueryKey,
   type CountItem, type SurveyResponse, type SkillStats, type ListAdminResponsesParams, type SurveyPath,
 } from "@workspace/api-client-react";
-import { TRAINING_TOPICS } from "@workspace/api-zod/training";
 import { cn } from "@/lib/utils";
 import {
   SURVEY_TITLE, QUESTION_LABELS, SKILL_LABELS, TRACK_LABELS, COURSE_LABELS, LEVEL_LABELS, SUB_LABELS, optionLabel, Q, SKILLS, GROUP_LABELS,
@@ -221,7 +220,7 @@ function Overview({ path }: { path?: SurveyPath }) {
         <Kpi label="معدل الإكمال" value={`${fmt(s.completionRate)}%`} icon={Activity} />
         <Kpi label="B2B / B2C" value={`${s.b2b} / ${s.b2c}`} icon={Target} />
         <Kpi label="متوسط المدة" value={`${fmt(s.avgDurationSec / 60)} د`} icon={Clock} />
-        <Kpi label="حجوزات من التقييم السابق" value={fmt(s.bookNowRespondents, 0)} icon={Bookmark} />
+        <Kpi label="حجز فوري" value={fmt(s.bookNowRespondents, 0)} icon={Bookmark} />
         <Kpi label="بيانات تواصل" value={fmt(s.contactsCaptured, 0)} icon={Contact} />
       </div>
       {s.total === 0 ? <Empty /> : (
@@ -346,107 +345,48 @@ function Courses({ path }: { path?: SurveyPath }) {
   const q = useGetCourseDemand(params, { query: { queryKey: getGetCourseDemandQueryKey(params) } });
   if (q.isLoading) return <Skel />;
   if (q.isError || !q.data) return <Err onRetry={() => q.refetch()} />;
-  const { items, topics, enquiries } = q.data;
-  const legacy = items.filter((i) => i.shown > 0);
-  const hasTopics = topics.some((t) => t.selected > 0 || t.respondents > 0);
-  if (!hasTopics && !enquiries.some((e) => e.recommended > 0) && !legacy.length) return <Empty />;
+  const items = q.data.items;
+  if (!items.length || items.every((i) => i.shown === 0)) return <Empty />;
   const gate = new Map(q.data.groups.map((g) => [g.groupId, g]));
-  const sortedTopics = [...topics].sort((a, b) => b.selected - a.selected);
-  const maxTopic = Math.max(...sortedTopics.map((t) => t.selected), 1);
-  // inferred workshop relevance: sum of selections of every topic that maps to the workshop
-  const inferred = new Map<string, { n: number; topics: string[] }>();
-  topics.forEach((t) => t.courseIds.forEach((c) => {
-    const cur = inferred.get(c) ?? { n: 0, topics: [] };
-    cur.n += t.selected; if (t.selected > 0) cur.topics.push(t.label);
-    inferred.set(c, cur);
-  }));
-  const inferredRows = [...inferred.entries()].filter(([, v]) => v.n > 0).sort((a, b) => b[1].n - a[1].n);
-  const maxInf = Math.max(...inferredRows.map(([, v]) => v.n), 1);
-  const enqRows = [...enquiries].filter((e) => e.recommended > 0 || e.enquiries > 0).sort((a, b) => b.enquiries - a.enquiries || b.recommended - a.recommended);
-  const legacyGroups = Array.from(new Set(legacy.map((i) => i.groupId)));
+  const groups = Array.from(new Set(items.map((i) => i.groupId))).sort((a, b) => (gate.get(b)?.selected ?? 0) - (gate.get(a)?.selected ?? 0));
   return (
     <div className="grid gap-4">
-      <div className="grid gap-2 rounded-2xl border border-card-border bg-card p-4 text-xs leading-relaxed text-muted-foreground md:grid-cols-3">
-        <p><b className="text-foreground">1 · أولويات الموضوعات:</b> ما اختاره المشاركون مباشرة.</p>
-        <p><b className="text-foreground">2 · صلة الورش المستنتجة:</b> تقدير تخطيطي عبر ربط الموضوعات بالورش، وليس تقييماً مباشراً للورشة.</p>
-        <p><b className="text-foreground">3 · طلبات التفاصيل:</b> طلب صريح للتفاصيل، وليس حجزاً مؤكداً. غياب الطلب لا يعني عدم الاهتمام.</p>
-      </div>
-      <Panel title="1 · أولويات الموضوعات المختارة مباشرة" sub="النسبة محسوبة ممن أجابوا عن الأولويات واختاروا مسار الموضوع؛ لكل مشارك حتى ثلاثة موضوعات إجمالاً. عدم اختيار موضوع لا يعني عدم الاهتمام.">
-        {!hasTopics ? <p className="text-sm text-muted-foreground">لا توجد اختيارات موضوعات بعد.</p> : (
-          <div className="grid gap-2.5 md:grid-cols-2">
-            {sortedTopics.map((t) => (
-              <div key={t.topicId} data-testid={`row-topic-${t.topicId}`}>
-                <div className="mb-1 flex items-baseline justify-between gap-3 text-[13px]">
-                  <span className="leading-snug"><span className="me-1.5 text-xs text-muted-foreground">{GROUP_LABELS[t.groupId]?.split("،")[0]}</span>{t.label}</span>
-                  <span className="shrink-0 tabular-nums text-muted-foreground"><b className="text-foreground">{fmt(t.selectedShare, 0)}%</b> · {t.selected}/{t.respondents}</span>
+      <Panel title="المسارات التدريبية التي اختارها المشاركون" sub="نسبة من أجابوا عن سؤال المسارات واختاروا كل مسار. الدورات أدناه تُعرض فقط لمن اختار مسارها.">
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {q.data.groups.slice().sort((a, b) => b.selected - a.selected).map((g) => (
+            <div key={g.groupId} className="grid gap-1.5" data-testid={`row-group-${g.groupId}`}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span>{GROUP_LABELS[g.groupId] ?? g.label}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground"><b className="text-foreground">{fmt(g.selectedShare, 0)}%</b> · {g.selected}/{g.respondents}</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-[hsl(var(--teal))]" style={{ width: `${g.selectedShare}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      {groups.map((g) => {
+        const rows = items.filter((i) => i.groupId === g).sort((a, b) => b.needIndex - a.needIndex);
+        const gg = gate.get(g);
+        return (
+          <Panel key={g} title={rows[0].groupLabel} sub={gg ? `اختار هذا المسار ${gg.selected} من ${gg.respondents} مشاركاً (${fmt(gg.selectedShare, 0)}%)` : undefined}>
+            <div className="grid gap-3">
+              {rows.map((r) => (
+                <div key={r.courseId} className="grid items-center gap-2 md:grid-cols-[1fr_260px_140px]" data-testid={`row-course-${r.courseId}`}>
+                  <p className="text-sm"><span className="me-1.5 text-xs text-muted-foreground">{r.courseId}</span>{COURSE_LABELS[r.courseId] ?? r.label}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 flex-1 rounded-full bg-muted"><div className="h-2.5 rounded-full bg-gradient-to-l from-accent to-primary" style={{ width: `${r.needIndex}%` }} /></div>
+                    <span className="w-10 text-end font-semibold tabular-nums">{fmt(r.needIndex, 0)}</span>
+                  </div>
+                  <div className="flex gap-1.5 text-xs tabular-nums text-muted-foreground">
+                    <span className="rounded bg-accent/20 px-1.5 py-0.5 font-medium text-[hsl(32_70%_28%)]">حجز {fmt(r.bookNowShare)}%</span>
+                    <span>n={r.shown}</span>
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-[hsl(var(--teal))]" style={{ width: `${(t.selected / maxTopic) * 100}%` }} /></div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
-      <Panel title="2 · صلة الورش المستنتجة عبر الموضوعات" sub="مجموع اختيارات الموضوعات المرتبطة بكل ورشة. مؤشر تخطيط وليس تقييماً مباشراً.">
-        {!inferredRows.length ? <p className="text-sm text-muted-foreground">ستظهر الصلة المستنتجة عند اختيار الموضوعات.</p> : (
-          <div className="grid gap-2.5">
-            {inferredRows.map(([cid, v]) => (
-              <div key={cid} className="grid items-center gap-2 md:grid-cols-[1fr_240px_70px]" data-testid={`row-inferred-${cid}`}>
-                <div className="text-sm"><span className="me-1.5 text-xs text-muted-foreground">{cid}</span>{COURSE_LABELS[cid] ?? cid}
-                  <p className="text-[11px] text-muted-foreground">عبر: {v.topics.join("، ")}</p></div>
-                <div className="h-2.5 rounded-full bg-muted"><div className="h-2.5 rounded-full bg-gradient-to-l from-accent to-primary" style={{ width: `${(v.n / maxInf) * 100}%` }} /></div>
-                <span className="text-end text-sm font-semibold tabular-nums">{v.n}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
-      <Panel title="3 · طلبات تفاصيل الدورات الصريحة" sub="عدد من طلبوا التفاصيل من بين من عُرضت عليهم الدورة كمقترح. غياب الطلب لا يعني عدم الاهتمام.">
-        {!enqRows.length ? <p className="text-sm text-muted-foreground">لم تُعرض دورات مقترحة بعد.</p> : (
-          <div className="grid gap-2.5">
-            {enqRows.map((e) => (
-              <div key={e.courseId} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-sm" data-testid={`row-enquiry-${e.courseId}`}>
-                <span><span className="me-1.5 text-xs text-muted-foreground">{e.courseId}</span>{COURSE_LABELS[e.courseId] ?? e.label}</span>
-                <span className="flex items-center gap-2 text-xs tabular-nums">
-                  <span className="text-muted-foreground">عُرضت {e.recommended}</span>
-                  {e.enquiries > 0
-                    ? <span className="rounded bg-accent/20 px-1.5 py-0.5 font-medium text-[hsl(32_70%_28%)]">طلبات {e.enquiries} · {fmt(e.enquiryShare, 0)}%</span>
-                    : <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">لا طلبات</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
-      {legacy.length > 0 && (
-        <section className="grid gap-4 rounded-2xl border border-dashed border-border bg-muted/30 p-4" data-testid="section-legacy-ratings">
-          <div>
-            <h2 className="font-semibold">تقييمات الدورات التاريخية (الاستبانة السابقة)</h2>
-            <p className="text-xs text-muted-foreground">ردود قديمة قيّم فيها المشاركون كل دورة مباشرة. لا تتأثر بالتدفق الجديد. حجز فوري هنا يعني الاختيار القديم فقط.</p>
-          </div>
-          {legacyGroups.sort((a, b) => (gate.get(b)?.selected ?? 0) - (gate.get(a)?.selected ?? 0)).map((g) => {
-            const rows = legacy.filter((i) => i.groupId === g).sort((a, b) => b.needIndex - a.needIndex);
-            return (
-              <Panel key={g} title={rows[0].groupLabel}>
-                <div className="grid gap-3">
-                  {rows.map((r) => (
-                    <div key={r.courseId} className="grid items-center gap-2 md:grid-cols-[1fr_260px_140px]" data-testid={`row-course-${r.courseId}`}>
-                      <p className="text-sm"><span className="me-1.5 text-xs text-muted-foreground">{r.courseId}</span>{COURSE_LABELS[r.courseId] ?? r.label}</p>
-                      <div className="flex items-center gap-2">
-                        <div className="h-2.5 flex-1 rounded-full bg-muted"><div className="h-2.5 rounded-full bg-gradient-to-l from-accent to-primary" style={{ width: `${r.needIndex}%` }} /></div>
-                        <span className="w-10 text-end font-semibold tabular-nums">{fmt(r.needIndex, 0)}</span>
-                      </div>
-                      <div className="flex gap-1.5 text-xs tabular-nums text-muted-foreground">
-                        <span className="rounded bg-accent/20 px-1.5 py-0.5 font-medium text-[hsl(32_70%_28%)]">حجز {fmt(r.bookNowShare)}%</span>
-                        <span>n={r.shown}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
-            );
-          })}
-        </section>
-      )}
+              ))}
+            </div>
+          </Panel>
+        );
+      })}
     </div>
   );
 }
@@ -545,12 +485,11 @@ function Matching() {
         <Empty title="لا توجد نتائج مطابقة بعد" text="تعتمد المطابقة على ردود الميدان مقابل أدلة الدراسة المكتبية. ستُحسب الأولويات بمجرد توفر ردود مكتملة." />
       ) : (
         <Panel title="محفظة الورش مرتبة حسب الدرجة المركّبة">
-          <p className="mb-3 rounded-lg bg-secondary p-2.5 text-xs leading-relaxed">مؤشر الأسئلة المرتبطة يأتي من فجوات المهارات وترتيب المسارات والتقييمات التاريخية للورش، وليس تقييماً مباشراً مؤكداً للورشة. أولوية الموضوع مستنتجة. تعتمد الدرجة المركّبة على الأعلى بينهما كمكوّن للاحتياج، وطلبات التفاصيل تُعرض منفصلة ولا تدخل في الدرجات، ولا يتغير تصنيف الخلية بإشارات الموضوعات وحدها.</p>
           {q.data.respondents === 0 && <p className="mb-3 rounded-lg bg-accent/15 p-2.5 text-xs">لا توجد ردود ميدانية بعد. الترتيب الحالي مبني على أدلة الدراسة المكتبية فقط.</p>}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <thead className="border-b border-border text-xs text-muted-foreground">
-                <tr>{["#", "الورشة", "المجال", "الخلية", "الدرجة", "مؤشر الأسئلة المرتبطة", "أولوية الموضوع (مستنتجة)", "طلبات التفاصيل", "الأدلة", "التوريد", "التحول", "المستوى"].map((h) => <th key={h} className="px-2 py-2 text-start font-medium">{h}</th>)}</tr>
+                <tr>{["#", "الورشة", "المجال", "الخلية", "الدرجة", "الاحتياج", "الأدلة", "التوريد", "التحول", "المستوى"].map((h) => <th key={h} className="px-2 py-2 text-start font-medium">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {q.data.items.map((m) => (
@@ -561,8 +500,6 @@ function Matching() {
                     <td className="px-2 py-2.5"><span className={cn("whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold", CELL[m.gridCell]?.cls)}>{CELL[m.gridCell]?.label}</span></td>
                     <td className="px-2 py-2.5 font-semibold tabular-nums">{fmt(m.compositeScore)}</td>
                     <td className="px-2 py-2.5 tabular-nums">{fmt(m.fieldNeed, 0)} <span className="text-xs text-muted-foreground">n={m.fieldN}</span></td>
-                    <td className="px-2 py-2.5 tabular-nums">{fmt(m.topicPriorityShare, 0)}% <span className="text-xs text-muted-foreground">{m.topicSelected}/{m.topicRespondents}</span></td>
-                    <td className="px-2 py-2.5 tabular-nums">{m.enquiryCount > 0 ? m.enquiryCount : <span className="text-xs text-muted-foreground">لا طلبات</span>}</td>
                     <td className="px-2 py-2.5 tabular-nums">{fmt(m.workshop.evidenceScore, 0)}</td>
                     <td className="px-2 py-2.5"><span className="rounded border border-border px-1.5 py-0.5 text-xs font-medium">{m.supplyAction}</span></td>
                     <td className={cn("px-2 py-2.5 tabular-nums text-xs font-semibold", m.rankShift > 0 ? "text-[hsl(var(--teal))]" : m.rankShift < 0 ? "text-destructive" : "text-muted-foreground")}>
@@ -665,15 +602,6 @@ function renderAnswer(qid: string, v: unknown): ReactNode {
     );
   }
   if (qid === "Q24") return <ol className="list-inside list-decimal text-xs">{(v as string[]).map((t) => <li key={t}>{TRACK_LABELS[t] ?? t}</li>)}</ol>;
-  if (qid === "Q25T") {
-    const t = new Map(TRAINING_TOPICS.map((x) => [x.id, x.label]));
-    return <ul className="list-inside list-disc text-xs">{(v as string[]).map((x) => <li key={x}>{t.get(x) ?? x}</li>)}</ul>;
-  }
-  if (qid === "Q25I" || qid === "Q25Shown") {
-    const ids = v as string[];
-    if (!ids.length) return <span className="text-xs text-muted-foreground">{qid === "Q25I" ? "لم يطلب تفاصيل أي دورة (لا يعني عدم الاهتمام)" : "—"}</span>;
-    return <ul className="list-inside list-disc text-xs">{ids.map((x) => <li key={x}>{COURSE_LABELS[x] ?? x}</li>)}</ul>;
-  }
   if (qid === "Q25") {
     const m = v as Record<string, number>;
     return (
@@ -690,7 +618,7 @@ function renderAnswer(qid: string, v: unknown): ReactNode {
 }
 
 function ResponseDrawer({ r, onClose }: { r: SurveyResponse; onClose: () => void }) {
-  const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25T", "Q25I", "Q25Shown", "Q25", "Q26"];
+  const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
   const a = r.answers as Record<string, unknown>;
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -715,7 +643,7 @@ function ResponseDrawer({ r, onClose }: { r: SurveyResponse; onClose: () => void
         <dl className="mt-5 divide-y divide-border">
           {order.filter((k) => a[k] !== undefined).map((k) => (
             <div key={k} className="py-3">
-              <dt className="text-xs font-semibold text-muted-foreground">{k} · {QUESTION_LABELS[k] ?? (k === "Q25Shown" ? "الدورات المقترحة التي عُرضت" : k)}</dt>
+              <dt className="text-xs font-semibold text-muted-foreground">{k} · {QUESTION_LABELS[k]}</dt>
               <dd className="mt-1 text-sm">{renderAnswer(k, a[k])}</dd>
             </div>
           ))}

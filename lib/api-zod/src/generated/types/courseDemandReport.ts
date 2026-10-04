@@ -7,12 +7,8 @@
  */
 import type { CourseDemandGroup } from './courseDemandGroup';
 import type { CourseDemandItem } from './courseDemandItem';
-import type { CourseEnquiry } from './courseEnquiry';
-import type { TrainingTopicPriority } from './trainingTopicPriority';
 
 export interface CourseDemandReport {
-  topics: TrainingTopicPriority[];
-  enquiries: CourseEnquiry[];
   groups: CourseDemandGroup[];
   items: CourseDemandItem[];
 }

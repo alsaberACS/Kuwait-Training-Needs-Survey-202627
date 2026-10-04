@@ -14,11 +14,6 @@ export interface MatchingItem {
   /** 0-100 confirmed field need from linked survey items */
   fieldNeed: number;
   fieldN: number;
-  /** Inferred topic priority, not a workshop rating */
-  topicPriorityShare: number;
-  topicRespondents: number;
-  topicSelected: number;
-  enquiryCount: number;
   linkedItems: string[];
   gridCell: MatchingItemGridCell;
   compositeScore: number;

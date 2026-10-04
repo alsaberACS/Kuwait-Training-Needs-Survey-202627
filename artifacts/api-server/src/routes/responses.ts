@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, responsesTable, type ResponseRow } from "@workspace/db";
 import { CreateResponseBody, UpdateResponseBody, CompleteResponseBody } from "@workspace/api-zod";
-import { trainingValidationError } from "../lib/training-validation";
 
 const router: IRouter = Router();
 
@@ -53,10 +52,6 @@ router.patch("/responses/:id", async (req, res) => {
   if (!existing) return res.status(404).json({ error: "Response not found" });
   if (existing.status === "complete") return res.status(409).json({ error: "Response already completed" });
   const { consent, path, currentStep, answers, contact } = parsed.data;
-  if (answers) {
-    const error = trainingValidationError(answers, false);
-    if (error) return res.status(400).json({ error });
-  }
   const [row] = await db
     .update(responsesTable)
     .set({
@@ -78,8 +73,6 @@ router.post("/responses/:id/complete", async (req, res) => {
   const existing = await load(req.params.id);
   if (!existing) return res.status(404).json({ error: "Response not found" });
   const { path, answers, contact, durationSec } = parsed.data;
-  const trainingError = trainingValidationError(answers, true);
-  if (trainingError) return res.status(400).json({ error: trainingError });
   if (!existing.consent && answers.consent !== true) return res.status(400).json({ error: "Consent is required" });
   const [row] = await db
     .update(responsesTable)
