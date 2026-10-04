@@ -13,7 +13,7 @@ Arabic (RTL) field survey "استبانة دراسة التموضع التناف
 ## Structure
 
 - `SURVEY_SPEC.md` — authoritative question text, branching rules, data model and matching framework (from the questionnaire + desk study). `attached_assets/extracted/` holds the extracted desk-study and catalogue text.
-- `artifacts/survey/src/lib/survey-definition.ts` — frontend question definitions (ids, Arabic labels, options, groups). Stable ids: skills S1–S10, courses C1–C23 (groups G1–G6), tracks T1–T6.
+- `artifacts/survey/src/lib/survey-definition.ts` — frontend question definitions (ids, Arabic labels, options, groups). Stable ids: skills S1–S10, courses C1–C70 (groups G1–G6), tracks T1–T6. C1–C23 retain the original survey choices; C24–C70 add the remaining workshops from catalogue pages 4–29.
 - `artifacts/api-server/src/data/survey-items.ts` — server-side labels + item → catalogue workshop mapping; `data/catalogue.ts` — 70 workshops extracted from the catalogue PDF (approximate figures where the PDF text was ambiguous).
 - `artifacts/api-server/src/lib/analytics.ts` — summary, drop-off, skills gap (importance vs performance), course need index (mean of 0/1/2 ÷ 2 × 100), track Borda scores, preferences, matching engine (4-cell grid + composite 40/30/20/10 with ±10 sensitivity), CSV export.
 - `lib/db/src/schema/responses.ts` — single `responses` table; all answers live in the `answers` JSONB keyed by question id. Aggregates are computed in Node from JSONB (no derived tables).
@@ -26,3 +26,4 @@ Q1–Q4, Q6–Q9, Q19–Q23 → option id string · Q5 → `{ sector, sub, other
 
 - Display numbering is sequential per path; original question ids (which skip Q12/13/16/17) are kept internally.
 - Never treat not-shown or dropped-off responses as "no need" — course rates use only respondents who saw the course (i.e. whose Q25 contains it). Track-selection shares (`groups` in the course-demand report) use only respondents who answered Q25G.
+- Keep the six survey tracks and original course ids/wording stable when expanding the catalogue, to avoid reinterpreting historical responses. Assign new workshops by topic rather than copying the PDF's category structure (e.g. HR analytics belongs under HR). Every catalogue workshop now has a primary course link; legacy secondary links remain for interpretation.

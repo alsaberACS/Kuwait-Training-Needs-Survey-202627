@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Kuwait Training Needs Survey 2026/27"
-description = "An Arabic, right-to-left, mobile-first survey system for the Kuwait Competitive Positioning and Training Needs Study 2026/2027. Respondents answer a smart, branching questionnaire (organisation vs individual paths, dual-rating skills gap matrices, drag-to-rank future tracks, a 23-course interest matrix) that identifies training and workshop needs in Kuwait. A protected admin dashboard shows responses, drop-off, segment breakdowns, skills-gap heatmaps and course demand, and feeds a matching engine that maps field results to the evidence-based workshop catalogue from the desk study."
+description = "An Arabic, right-to-left, mobile-first survey system for the Kuwait Competitive Positioning and Training Needs Study 2026/2027. Respondents answer a smart, branching questionnaire (organisation vs individual paths, dual-rating skills gap matrices, drag-to-rank future tracks, a track-filtered 70-course interest matrix) that identifies training and workshop needs in Kuwait. A protected admin dashboard shows responses, drop-off, segment breakdowns, skills-gap heatmaps and course demand, and feeds a matching engine that maps field results to the evidence-based workshop catalogue from the desk study."
 version = "1.0.0"
 id = "artifacts/survey"
 router = "path"
