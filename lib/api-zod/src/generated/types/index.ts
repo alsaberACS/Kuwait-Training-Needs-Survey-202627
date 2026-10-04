@@ -15,6 +15,7 @@ export * from './catalogueWorkshopLocalSupply';
 export * from './completeResponseRequest';
 export * from './contactInfo';
 export * from './countItem';
+export * from './courseDemandGroup';
 export * from './courseDemandItem';
 export * from './courseDemandReport';
 export * from './createResponseRequest';

@@ -11,7 +11,7 @@ import {
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-  orderedCourseGroups, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone,
+  orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone,
 } from "@/lib/survey-logic";
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
@@ -135,12 +135,28 @@ export default function SurveyPage() {
   const nums = useMemo(() => questionNumbers(path), [path]);
   const suggestion = suggestPath(answers);
   const groups = useMemo(() => orderedCourseGroups(answers), [answers.Q7, answers.Q5?.sector, answers.Q6]); // eslint-disable-line react-hooks/exhaustive-deps
+  const suggested = suggestedGroups(answers);
+  const groupOptions = useMemo(
+    () => groups.map((g) => ({
+      id: g.id,
+      label: g.label,
+      description: `${g.courses.length} دورات`,
+      suggested: suggested.includes(g.id),
+    })),
+    [groups, suggested.join()], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const chosenGroups = selectedCourseGroups(answers);
+  const chosenCourseCount = chosenGroups.reduce((n, g) => n + g.courses.length, 0);
+  const setGroups = (ids: string[]) => {
+    setAnswers((a) => ({ ...a, Q25G: ids, Q25: pruneCourseAnswers(a.Q25, ids) }));
+    setErrors((e) => { if (!e.Q25G && !e.Q25) return e; const n = { ...e }; delete n.Q25G; delete n.Q25; return n; });
+  };
 
   useEffect(() => {
     if (step === STEP_S4 && !answers.Q24) set("Q24", defaultTrackOrder());
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [step, done]);
+  useEffect(() => { window.scrollTo({ top: 0 }); }, [step, done]); // instant: the 0.3s section crossfade should land on the new section, not mid-scroll
 
   const begin = async () => {
     if (!consent) { setErrors({ consent: "يلزم الموافقة على المشاركة للمتابعة" }); return; }
@@ -391,8 +407,22 @@ export default function SurveyPage() {
                   <QuestionShell id="Q24" num={nums.Q24} title={Q.Q24.text} hint="اسحب البطاقات أو استخدم الأسهم. الأعلى هو الأهم." error={errors.Q24}>
                     <RankList tracks={TRACKS} value={answers.Q24 ?? defaultTrackOrder()} onChange={(v) => set("Q24", v)} />
                   </QuestionShell>
-                  <QuestionShell id="Q25" num={nums.Q25} title={Q.Q25.text} hint="رتّبنا المجالات حسب مسارك. يمكنك طي أي مجال لا يهمك بضغطة واحدة." error={errors.Q25}>
-                    <CourseMatrix groups={groups} value={answers.Q25} onChange={(v) => set("Q25", v)} showMissing={!!errors.Q25} />
+                  <QuestionShell id="Q25G" num={nums.Q25G} title={Q.Q25G.text} hint={Q.Q25G.hint} error={errors.Q25G}>
+                    <MultiChoice qid="Q25G" cols={2} options={groupOptions} value={answers.Q25G} onChange={setGroups} />
+                  </QuestionShell>
+                  <QuestionShell
+                    id="Q25" num={nums.Q25} title={Q.Q25.text} error={errors.Q25}
+                    hint={chosenGroups.length
+                      ? `نعرض لك ${chosenCourseCount} دورة ضمن ${chosenGroups.length === 1 ? "المسار الذي اخترته" : "المسارات التي اخترتها"} فقط. غيّر اختيار المسارات أعلاه في أي وقت.`
+                      : "اختر مساراً تدريبياً واحداً على الأقل في السؤال السابق لتظهر دوراته هنا."}
+                  >
+                    {chosenGroups.length ? (
+                      <CourseMatrix groups={chosenGroups} value={answers.Q25} onChange={(v) => set("Q25", v)} showMissing={!!errors.Q25} />
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground" data-testid="text-courses-placeholder">
+                        لم تختر أي مسار بعد — ستظهر الدورات هنا فور اختيارك للمسارات التي تهمك.
+                      </div>
+                    )}
                   </QuestionShell>
                   <QuestionShell id="Q26" num={nums.Q26} title={Q.Q26.text} error={errors.Q26}>
                     <MultiChoice qid="Q26" max={2} options={Q.Q26.options} value={answers.Q26} onChange={(v) => set("Q26", v)} />

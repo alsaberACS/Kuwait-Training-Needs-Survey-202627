@@ -315,6 +315,13 @@ export const GetCourseDemandQueryParams = zod.object({
 })
 
 export const GetCourseDemandResponse = zod.object({
+  "groups": zod.array(zod.object({
+  "groupId": zod.string(),
+  "label": zod.string(),
+  "respondents": zod.number().int().describe('Respondents who answered the gate question'),
+  "selected": zod.number().int(),
+  "selectedShare": zod.number().describe('selected / respondents x 100')
+}).describe('How often each course group was chosen in the Q25G gate question.')),
   "items": zod.array(zod.object({
   "courseId": zod.string(),
   "label": zod.string(),

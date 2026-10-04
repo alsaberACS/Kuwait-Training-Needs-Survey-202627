@@ -162,7 +162,21 @@ export interface CourseDemandItem {
   bookNowShare: number;
 }
 
+/**
+ * How often each course group was chosen in the Q25G gate question.
+ */
+export interface CourseDemandGroup {
+  groupId: string;
+  label: string;
+  /** Respondents who answered the gate question */
+  respondents: number;
+  selected: number;
+  /** selected / respondents x 100 */
+  selectedShare: number;
+}
+
 export interface CourseDemandReport {
+  groups: CourseDemandGroup[];
   items: CourseDemandItem[];
 }
 

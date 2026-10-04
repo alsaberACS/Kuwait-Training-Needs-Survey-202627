@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { motion, Reorder, useDragControls, AnimatePresence } from "framer-motion";
-import { Check, ChevronUp, ChevronDown, GripVertical, Info, ChevronLeft, EyeOff, RotateCcw } from "lucide-react";
+import { Check, ChevronUp, ChevronDown, GripVertical, Info, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Option, Rating, Skill, Track, CourseGroup } from "@/lib/survey-definition";
 import { LEVEL_LABELS } from "@/lib/survey-definition";
@@ -108,8 +108,8 @@ export function SingleChoice({
 }
 
 export function MultiChoice({
-  qid, options, value = [], onChange, max,
-}: { qid: string; options: Option[]; value?: string[]; onChange: (v: string[]) => void; max?: number }) {
+  qid, options, value = [], onChange, max, cols = 1,
+}: { qid: string; options: Option[]; value?: string[]; onChange: (v: string[]) => void; max?: number; cols?: 1 | 2 }) {
   const [hint, setHint] = useState(false);
   const toggle = (op: Option) => {
     setHint(false);
@@ -132,11 +132,11 @@ export function MultiChoice({
           </span>
         </div>
       )}
-      <div className="grid gap-2.5">
+      <div className={cn("grid gap-2.5", cols === 2 && "sm:grid-cols-2")}>
         {options.map((op) => (
           <OptionCard
             key={op.id} square label={op.label} selected={value.includes(op.id)} onClick={() => toggle(op)}
-            testId={`option-${qid}-${op.id}`}
+            testId={`option-${qid}-${op.id}`} description={op.description} suggested={op.suggested}
             disabled={!!max && value.length >= max && !value.includes(op.id)}
           />
         ))}
@@ -268,16 +268,6 @@ export function RankList({ tracks, value, onChange }: { tracks: Track[]; value: 
 export function CourseMatrix({
   groups, value = {}, onChange, showMissing,
 }: { groups: CourseGroup[]; value?: Record<string, 0 | 1 | 2>; onChange: (v: Record<string, 0 | 1 | 2>) => void; showMissing?: boolean }) {
-  const [skipped, setSkipped] = useState<Record<string, boolean>>(() => {
-    const s: Record<string, boolean> = {};
-    groups.forEach((g) => { if (g.courses.every((c) => value[c.id] === 0)) s[g.id] = true; });
-    return s;
-  });
-  const skip = (g: CourseGroup) => {
-    const next = { ...value }; g.courses.forEach((c) => (next[c.id] = 0));
-    setSkipped({ ...skipped, [g.id]: true }); onChange(next);
-  };
-  const unskip = (g: CourseGroup) => setSkipped({ ...skipped, [g.id]: false });
   const levelStyle = ["border-muted-foreground/40 bg-muted text-foreground", "border-[hsl(var(--teal))] bg-[hsl(var(--teal))] text-white", "border-accent bg-accent text-accent-foreground"];
   return (
     <div className="grid gap-4">
@@ -286,54 +276,45 @@ export function CourseMatrix({
           <span key={l} className={cn("rounded-full border px-2.5 py-1 font-medium", levelStyle[i])}>{l}</span>
         ))}
       </div>
-      {groups.map((g, gi) => {
+      <AnimatePresence initial={false}>
+        {groups.map((g, gi) => {
         const answered = g.courses.filter((c) => value[c.id] !== undefined).length;
         return (
-          <div key={g.id} className="overflow-hidden rounded-xl border border-border" data-testid={`course-group-${g.id}`}>
+          <motion.div key={g.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden rounded-xl border border-border" data-testid={`course-group-${g.id}`}>
             <div className="flex flex-wrap items-center gap-2 bg-muted/60 px-4 py-3">
               <span className="font-display text-xs font-semibold text-accent tabular-nums">0{gi + 1}</span>
               <h4 className="flex-1 font-semibold">{g.label}</h4>
-              <span className="text-xs tabular-nums text-muted-foreground">{answered}/{g.courses.length}</span>
-              {skipped[g.id] ? (
-                <button type="button" onClick={() => unskip(g)} className="flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium hover:border-primary" data-testid={`button-unskip-${g.id}`}>
-                  <RotateCcw className="h-3 w-3" /> عرض الدورات
-                </button>
-              ) : (
-                <button type="button" onClick={() => skip(g)} className="flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium hover:border-primary" data-testid={`button-skip-${g.id}`}>
-                  <EyeOff className="h-3 w-3" /> غير مهتم بالمجال
-                </button>
-              )}
+              <span className={cn("rounded-full px-2 py-0.5 text-xs tabular-nums", answered === g.courses.length ? "bg-[hsl(var(--teal))]/15 text-[hsl(var(--teal))] font-semibold" : "text-muted-foreground")}>
+                {answered}/{g.courses.length}
+              </span>
             </div>
-            <AnimatePresence initial={false}>
-              {!skipped[g.id] && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="divide-y divide-border">
-                  {g.courses.map((c) => {
-                    const v = value[c.id];
-                    return (
-                      <div key={c.id} className={cn("p-3.5 sm:flex sm:items-center sm:gap-4", showMissing && v === undefined && "bg-destructive/5")} data-testid={`course-${c.id}`}>
-                        <p className="mb-2.5 flex-1 text-[15px] leading-relaxed sm:mb-0">{c.label}</p>
-                        <div className="grid grid-cols-3 gap-1.5 sm:w-[360px]">
-                          {LEVEL_LABELS.map((l, i) => (
-                            <motion.button
-                              key={l} type="button" whileTap={{ scale: 0.95 }}
-                              onClick={() => onChange({ ...value, [c.id]: i as 0 | 1 | 2 })}
-                              aria-pressed={v === i} data-testid={`course-${c.id}-${i}`}
-                              className={cn("min-h-[44px] rounded-lg border px-1.5 text-xs font-medium leading-tight transition-all sm:text-[13px]",
-                                v === i ? levelStyle[i] : "border-border bg-background hover:border-primary/40")}
-                            >
-                              {l}
-                            </motion.button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+            <div className="divide-y divide-border">
+              {g.courses.map((c) => {
+                const v = value[c.id];
+                return (
+                  <div key={c.id} className={cn("p-3.5 sm:flex sm:items-center sm:gap-4", showMissing && v === undefined && "bg-destructive/5")} data-testid={`course-${c.id}`}>
+                    <p className="mb-2.5 flex-1 text-[15px] leading-relaxed sm:mb-0">{c.label}</p>
+                    <div className="grid grid-cols-3 gap-1.5 sm:w-[360px]">
+                      {LEVEL_LABELS.map((l, i) => (
+                        <motion.button
+                          key={l} type="button" whileTap={{ scale: 0.95 }}
+                          onClick={() => onChange({ ...value, [c.id]: i as 0 | 1 | 2 })}
+                          aria-pressed={v === i} data-testid={`course-${c.id}-${i}`}
+                          className={cn("min-h-[44px] rounded-lg border px-1.5 text-xs font-medium leading-tight transition-all sm:text-[13px]",
+                            v === i ? levelStyle[i] : "border-border bg-background hover:border-primary/40")}
+                        >
+                          {l}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
         );
       })}
+      </AnimatePresence>
     </div>
   );
 }

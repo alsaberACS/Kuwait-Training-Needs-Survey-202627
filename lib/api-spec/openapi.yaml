@@ -613,14 +613,35 @@ components:
         bookNowShare:
           type: number
       required: [courseId, label, groupId, groupLabel, shown, notInterested, future, bookNow, needIndex, bookNowShare]
+    CourseDemandGroup:
+      type: object
+      description: How often each course group was chosen in the Q25G gate question.
+      properties:
+        groupId:
+          type: string
+        label:
+          type: string
+        respondents:
+          type: integer
+          description: Respondents who answered the gate question
+        selected:
+          type: integer
+        selectedShare:
+          type: number
+          description: selected / respondents x 100
+      required: [groupId, label, respondents, selected, selectedShare]
     CourseDemandReport:
       type: object
       properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseDemandGroup"
         items:
           type: array
           items:
             $ref: "#/components/schemas/CourseDemandItem"
-      required: [items]
+      required: [groups, items]
     TrackRankItem:
       type: object
       properties:

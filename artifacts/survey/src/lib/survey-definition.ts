@@ -1,5 +1,5 @@
 export type Path = "B2B" | "B2C";
-export interface Option { id: string; label: string; exclusive?: boolean; other?: boolean }
+export interface Option { id: string; label: string; exclusive?: boolean; other?: boolean; description?: string; suggested?: boolean }
 export interface Skill { id: string; label: string }
 export interface Course { id: string; label: string }
 export interface CourseGroup { id: string; label: string; courses: Course[] }
@@ -31,6 +31,15 @@ export const CONTACT_FIELDS = {
 };
 
 const o = (id: string, label: string, extra: Partial<Option> = {}): Option => ({ id, label, ...extra });
+
+export const GROUP_LABELS: Record<string, string> = {
+  G1: "التحول الرقمي والذكاء الاصطناعي",
+  G2: "القيادة والإدارة الاستراتيجية",
+  G3: "الموارد البشرية والمهارات الشخصية",
+  G4: "المالية، المصرفية، والامتثال",
+  G5: "إدارة المشاريع، العقود، والجودة",
+  G6: "الجاهزية المهنية والتشغيل (للموظفين والباحثين عن عمل)",
+};
 
 export const Q = {
   Q1: { id: "Q1", text: "الجنسية", options: [o("kuwaiti", "كويتي"), o("non_kuwaiti", "غير كويتي")] },
@@ -167,6 +176,11 @@ export const Q = {
     ],
   },
   Q24: { id: "Q24", text: "ترتيب المسارات المستقبلية", hint: "رتّب المسارات من 1 (الأهم) إلى 6" },
+  Q25G: {
+    id: "Q25G", text: "ما المسارات التدريبية التي تهمك؟",
+    hint: "اختر مساراً واحداً أو أكثر، وسنعرض لك دورات المسارات التي اخترتها فقط.",
+    options: Object.entries(GROUP_LABELS).map(([id, label]) => o(id, label)),
+  },
   Q25: {
     id: "Q25", text: "ما مدى رغبتك في التسجيل بالدورات التدريبية التالية خلال الـ 6 أشهر القادمة؟",
     levels: ["غير مهتم", "مهتم مستقبلاً", "أرغب بالحجز فوراً"] as const,
@@ -224,7 +238,7 @@ export const TRACKS: Track[] = [
 const c = (n: number, label: string): Course => ({ id: `C${n}`, label });
 export const COURSE_GROUPS: CourseGroup[] = [
   {
-    id: "G1", label: "التحول الرقمي والذكاء الاصطناعي",
+    id: "G1", label: GROUP_LABELS.G1,
     courses: [
       c(1, "هندسة الأوامر وتطبيقات الذكاء الاصطناعي التوليدي"), c(2, "تصميم وبناء وكلاء الذكاء الاصطناعي (AI Agents)"),
       c(3, "سرد القصص بالبيانات وتحليلها (Data Storytelling & Power BI)"), c(4, "أساسيات الحوسبة السحابية (Cloud Computing)"),
@@ -232,21 +246,21 @@ export const COURSE_GROUPS: CourseGroup[] = [
     ],
   },
   {
-    id: "G2", label: "القيادة والإدارة الاستراتيجية",
+    id: "G2", label: GROUP_LABELS.G2,
     courses: [
       c(6, "القيادة الاستراتيجية وبناء الفرق عالية الأداء"), c(7, "شهادة السكرتارية التنفيذية ومدير مكتب القيادي التنفيذي"),
       c(8, "تأهيل مديري مكاتب الوزراء والقيادات الحكومية"), c(9, "عيادة نمو المنشآت الصغيرة والمتوسطة (SME Growth Clinic)"),
     ],
   },
   {
-    id: "G3", label: "الموارد البشرية والمهارات الشخصية",
+    id: "G3", label: GROUP_LABELS.G3,
     courses: [
       c(10, "الذكاء العاطفي والمرونة النفسية في بيئة العمل"), c(11, "إدارة المواهب وتوجيه وإرشاد الموظفين (Coaching)"),
       c(12, "الجاهزية للعمل في الموارد البشرية الرقمية (HR Digital Readiness)"),
     ],
   },
   {
-    id: "G4", label: "المالية، المصرفية، والامتثال",
+    id: "G4", label: GROUP_LABELS.G4,
     courses: [
       c(13, "مبادئ التمويل الإسلامي والصكوك"), c(14, "مكافحة غسل الأموال وتمويل الإرهاب والامتثال (AML/CFT)"),
       c(15, "تحليل الائتمان وإدارة المخاطر (Credit & Risk Analysis)"), c(16, "التكنولوجيا المالية (FinTech) والمدفوعات الرقمية"),
@@ -254,14 +268,14 @@ export const COURSE_GROUPS: CourseGroup[] = [
     ],
   },
   {
-    id: "G5", label: "إدارة المشاريع، العقود، والجودة",
+    id: "G5", label: GROUP_LABELS.G5,
     courses: [
       c(18, "إدارة المشاريع الاحترافية والتميز التشغيلي"), c(19, "سلسلة التحديثات التشريعية والتنظيمية لبيئة الأعمال"),
       c(20, "المشتريات والعقود والتعاقد المؤسسي (Procurement)"),
     ],
   },
   {
-    id: "G6", label: "الجاهزية المهنية والتشغيل (للموظفين والباحثين عن عمل)",
+    id: "G6", label: GROUP_LABELS.G6,
     courses: [
       c(21, "خدمة العملاء ومراكز الاتصال (Customer Service Readiness)"), c(22, "مشرفو أنظمة وغرف المراقبة الأمنية (CCTV Operations)"),
       c(23, "العمليات اللوجستية والمخازن (Logistics Readiness)"),
@@ -296,5 +310,5 @@ export interface Answers {
   Q8?: string; Q9?: string; Q10?: string[]; Q11?: string[]; Q14?: Record<string, Rating>;
   Q15?: string[]; Q18?: Record<string, Rating>;
   Q19?: string; Q20?: string; Q21?: string; Q22?: string; Q23?: string;
-  Q24?: string[]; Q25?: Record<string, 0 | 1 | 2>; Q26?: string[];
+  Q24?: string[]; Q25G?: string[]; Q25?: Record<string, 0 | 1 | 2>; Q26?: string[];
 }

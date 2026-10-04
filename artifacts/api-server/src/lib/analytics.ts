@@ -107,8 +107,19 @@ export function skillsGap(rows: ResponseRow[]) {
   };
 }
 
+/** Q25G gate: which course groups ("المسارات التدريبية") each respondent chose to see. */
+export function selectedGroups(a: Answers): string[] {
+  return Array.isArray(a.Q25G) ? (a.Q25G as unknown[]).map(str).filter((g) => g in COURSE_GROUPS) : [];
+}
+
 export function courseDemand(rows: ResponseRow[]) {
+  // Only respondents who reached the gate question count toward track-selection shares.
+  const gated = rows.map((r) => selectedGroups(r.answers as Answers)).filter((g) => g.length > 0);
   return {
+    groups: Object.entries(COURSE_GROUPS).map(([groupId, label]) => {
+      const selected = gated.filter((g) => g.includes(groupId)).length;
+      return { groupId, label, respondents: gated.length, selected, selectedShare: gated.length ? r2((selected / gated.length) * 100) : 0 };
+    }),
     items: Object.entries(COURSES).map(([courseId, c]) => {
       const codes = rows
         .map((r) => (((r.answers as Answers).Q25 as Record<string, unknown>) ?? {})[courseId])
@@ -152,7 +163,7 @@ export function trackRanks(rows: ResponseRow[]) {
 }
 
 export function preferences(rows: ResponseRow[]) {
-  const multis = new Set(["Q10", "Q11", "Q15", "Q26"]);
+  const multis = new Set(["Q10", "Q11", "Q15", "Q25G", "Q26"]);
   return {
     questions: Object.entries(QUESTION_LABELS).map(([questionId, label]) => {
       const pick = multis.has(questionId) ? multi(questionId) : single(questionId);
@@ -226,7 +237,7 @@ export function toCsv(rows: ResponseRow[]): string {
     const s = v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
-  const qs = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25", "Q26"];
+  const qs = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
   const head = ["id", "status", "path", "created_at", "completed_at", "duration_sec", "device", "source_tag", "contact_name", "contact_email", "contact_phone", ...qs];
   const lines = rows.map((r) => {
     const a = r.answers as Answers;

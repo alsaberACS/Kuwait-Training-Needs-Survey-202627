@@ -22,16 +22,34 @@ export function suggestPath(a: Answers): Path | undefined {
 export function questionNumbers(path?: Path): Record<string, number> {
   const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7",
     ...(path === "B2C" ? ["Q15", "Q18"] : ["Q8", "Q9", "Q10", "Q11", "Q14"]),
-    "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25", "Q26"];
+    "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
   return Object.fromEntries(order.map((id, i) => [id, i + 1]));
 }
 
+/** Groups the respondent's profile points to; shown first and badged as suggested. */
+export function suggestedGroups(a: Answers): string[] {
+  if (a.Q7 === "B2B") return ["G2"];
+  if (a.Q5?.sector === "not_working" || a.Q6 === "student") return ["G6"];
+  return [];
+}
+
 export function orderedCourseGroups(a: Answers): CourseGroup[] {
-  const first: string[] = [];
-  if (a.Q7 === "B2B") first.push("G2");
-  else if (a.Q5?.sector === "not_working" || a.Q6 === "student") first.push("G6");
+  const first = suggestedGroups(a);
   const rest = COURSE_GROUPS.filter((g) => !first.includes(g.id));
   return [...COURSE_GROUPS.filter((g) => first.includes(g.id)), ...rest];
+}
+
+/** Only the groups picked in Q25G, in smart order — the course matrix shows nothing else. */
+export const selectedCourseGroups = (a: Answers): CourseGroup[] =>
+  orderedCourseGroups(a).filter((g) => a.Q25G?.includes(g.id));
+
+export const selectedCourses = (a: Answers) => selectedCourseGroups(a).flatMap((g) => g.courses);
+
+/** Drop course answers that belong to groups no longer selected, so Q25 only ever holds shown courses. */
+export function pruneCourseAnswers(q25: Answers["Q25"], groupIds: string[]): Answers["Q25"] {
+  if (!q25) return q25;
+  const keep = new Set(COURSE_GROUPS.filter((g) => groupIds.includes(g.id)).flatMap((g) => g.courses.map((c) => c.id)));
+  return Object.fromEntries(Object.entries(q25).filter(([id]) => keep.has(id))) as Answers["Q25"];
 }
 
 export const defaultTrackOrder = () => TRACKS.map((t) => t.id);
@@ -64,7 +82,8 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
   if (step === STEP_S4) {
     (["Q19", "Q20", "Q21", "Q22", "Q23"] as const).forEach((k) => { if (!a[k]) e[k] = REQ; });
     if (!a.Q24 || a.Q24.length !== 6) e.Q24 = "يرجى ترتيب المسارات";
-    const m = ALL_COURSES.filter((c) => a.Q25?.[c.id] === undefined).length;
+    if (!a.Q25G?.length) e.Q25G = "اختر مساراً تدريبياً واحداً على الأقل لعرض الدورات";
+    const m = selectedCourses(a).filter((c) => a.Q25?.[c.id] === undefined).length;
     if (m) e.Q25 = `بقي ${m} من الدورات دون اختيار`;
     if (!a.Q26?.length) e.Q26 = "اختر عنصراً واحداً على الأقل (حتى عنصرين)";
   }
@@ -72,6 +91,7 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
 }
 
 export const bookedCourses = (a: Answers) => ALL_COURSES.filter((c) => a.Q25?.[c.id] === 2);
+
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export function validatePhone(raw: string): boolean {

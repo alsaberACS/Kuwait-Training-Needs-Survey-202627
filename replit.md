@@ -20,9 +20,9 @@ Arabic (RTL) field survey "استبانة دراسة التموضع التناف
 
 ## Answer shape (answers JSONB)
 
-Q1–Q4, Q6–Q9, Q19–Q23 → option id string · Q5 → `{ sector, sub, other }` · Q10, Q11, Q15, Q26 → option id array · Q14/Q18 → `{ S1: { importance, performance }, … }` · Q24 → ordered track id array · Q25 → `{ C1: 0|1|2, … }` (0 غير مهتم, 1 مهتم مستقبلاً, 2 أرغب بالحجز فوراً).
+Q1–Q4, Q6–Q9, Q19–Q23 → option id string · Q5 → `{ sector, sub, other }` · Q10, Q11, Q15, Q26 → option id array · Q14/Q18 → `{ S1: { importance, performance }, … }` · Q24 → ordered track id array · Q25G → selected course-group id array (G1–G6, the "المسارات التدريبية" gate) · Q25 → `{ C1: 0|1|2, … }` (0 غير مهتم, 1 مهتم مستقبلاً, 2 أرغب بالحجز فوراً) **only for courses in the selected groups** — the client prunes answers when a group is deselected.
 
 ## Conventions
 
 - Display numbering is sequential per path; original question ids (which skip Q12/13/16/17) are kept internally.
-- Never treat not-shown or dropped-off responses as "no need" — course rates use only respondents who saw the course.
+- Never treat not-shown or dropped-off responses as "no need" — course rates use only respondents who saw the course (i.e. whose Q25 contains it). Track-selection shares (`groups` in the course-demand report) use only respondents who answered Q25G.

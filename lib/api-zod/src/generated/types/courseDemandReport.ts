@@ -5,8 +5,10 @@
  * Kuwait Training Needs Survey 2026/27 API
  * OpenAPI spec version: 0.1.0
  */
+import type { CourseDemandGroup } from './courseDemandGroup';
 import type { CourseDemandItem } from './courseDemandItem';
 
 export interface CourseDemandReport {
+  groups: CourseDemandGroup[];
   items: CourseDemandItem[];
 }

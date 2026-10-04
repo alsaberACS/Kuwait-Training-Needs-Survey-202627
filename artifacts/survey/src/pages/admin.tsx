@@ -16,7 +16,7 @@ import {
 } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import {
-  SURVEY_TITLE, QUESTION_LABELS, SKILL_LABELS, TRACK_LABELS, COURSE_LABELS, LEVEL_LABELS, SUB_LABELS, optionLabel, Q, SKILLS,
+  SURVEY_TITLE, QUESTION_LABELS, SKILL_LABELS, TRACK_LABELS, COURSE_LABELS, LEVEL_LABELS, SUB_LABELS, optionLabel, Q, SKILLS, GROUP_LABELS,
 } from "@/lib/survey-definition";
 
 setAuthTokenGetter(() => sessionStorage.getItem("adminKey"));
@@ -347,13 +347,28 @@ function Courses({ path }: { path?: SurveyPath }) {
   if (q.isError || !q.data) return <Err onRetry={() => q.refetch()} />;
   const items = q.data.items;
   if (!items.length || items.every((i) => i.shown === 0)) return <Empty />;
-  const groups = Array.from(new Set(items.map((i) => i.groupId)));
+  const gate = new Map(q.data.groups.map((g) => [g.groupId, g]));
+  const groups = Array.from(new Set(items.map((i) => i.groupId))).sort((a, b) => (gate.get(b)?.selected ?? 0) - (gate.get(a)?.selected ?? 0));
   return (
     <div className="grid gap-4">
+      <Panel title="المسارات التدريبية التي اختارها المشاركون" sub="نسبة من أجابوا عن سؤال المسارات واختاروا كل مسار. الدورات أدناه تُعرض فقط لمن اختار مسارها.">
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {q.data.groups.slice().sort((a, b) => b.selected - a.selected).map((g) => (
+            <div key={g.groupId} className="grid gap-1.5" data-testid={`row-group-${g.groupId}`}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span>{GROUP_LABELS[g.groupId] ?? g.label}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground"><b className="text-foreground">{fmt(g.selectedShare, 0)}%</b> · {g.selected}/{g.respondents}</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-[hsl(var(--teal))]" style={{ width: `${g.selectedShare}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      </Panel>
       {groups.map((g) => {
         const rows = items.filter((i) => i.groupId === g).sort((a, b) => b.needIndex - a.needIndex);
+        const gg = gate.get(g);
         return (
-          <Panel key={g} title={rows[0].groupLabel}>
+          <Panel key={g} title={rows[0].groupLabel} sub={gg ? `اختار هذا المسار ${gg.selected} من ${gg.respondents} مشاركاً (${fmt(gg.selectedShare, 0)}%)` : undefined}>
             <div className="grid gap-3">
               {rows.map((r) => (
                 <div key={r.courseId} className="grid items-center gap-2 md:grid-cols-[1fr_260px_140px]" data-testid={`row-course-${r.courseId}`}>
@@ -603,7 +618,7 @@ function renderAnswer(qid: string, v: unknown): ReactNode {
 }
 
 function ResponseDrawer({ r, onClose }: { r: SurveyResponse; onClose: () => void }) {
-  const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25", "Q26"];
+  const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q11", "Q14", "Q15", "Q18", "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
   const a = r.answers as Record<string, unknown>;
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
