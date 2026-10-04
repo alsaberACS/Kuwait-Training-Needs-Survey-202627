@@ -23,10 +23,13 @@ const LS_START = "kw-tna-started";
 function Brand({ light }: { light?: boolean }) {
   return (
     <div className="flex items-center gap-3">
-      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-primary">
-        <div className="absolute inset-0 sadu opacity-60" />
-        <div className="absolute inset-[7px] rounded-md bg-primary flex items-center justify-center font-display text-[11px] font-bold text-accent">ASDC</div>
-      </div>
+      <img
+        src={`${import.meta.env.BASE_URL}asdc-logo.jpg`}
+        alt="شعار مركز عبدالعزيز حمد الصقر للتنمية والتطوير"
+        width={72}
+        height={72}
+        className="h-16 w-16 shrink-0 rounded-xl bg-white object-contain p-1 sm:h-[72px] sm:w-[72px]"
+      />
       <div className="leading-tight">
         <p className={cn("text-[13px] font-semibold", light ? "text-white" : "text-foreground")}>غرفة تجارة وصناعة الكويت</p>
         <p className={cn("text-xs", light ? "text-white/70" : "text-muted-foreground")}>مركز عبدالعزيز حمد الصقر للتنمية</p>
