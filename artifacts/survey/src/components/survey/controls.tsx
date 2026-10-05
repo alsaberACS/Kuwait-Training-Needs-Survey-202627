@@ -4,6 +4,7 @@ import { Check, ChevronUp, ChevronDown, GripVertical, Info, ChevronLeft } from "
 import { cn } from "@/lib/utils";
 import type { Option, Rating, Skill, Track, CourseGroup } from "@/lib/survey-definition";
 import { LEVEL_LABELS } from "@/lib/survey-definition";
+import { useSurveyAdvance } from "./navigation";
 
 export function QuestionShell({
   num, title, hint, error, children, id, aside,
@@ -11,12 +12,14 @@ export function QuestionShell({
   return (
     <motion.section
       id={`q-${id}`}
+      data-survey-question={id}
+      tabIndex={-1}
       data-testid={`question-${id}`}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.2, 0.7, 0.2, 1] }}
       className={cn(
-        "rounded-2xl border bg-card p-5 sm:p-7 shadow-[0_1px_0_hsl(var(--border)),0_12px_30px_-18px_hsl(206_62%_17%/.25)] transition-colors",
+        "scroll-mt-24 rounded-2xl border bg-card p-5 sm:p-7 shadow-[0_1px_0_hsl(var(--border)),0_12px_30px_-18px_hsl(206_62%_17%/.25)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
         error ? "border-destructive/50" : "border-card-border",
       )}
     >
@@ -98,10 +101,11 @@ export function OptionCard({
 export function SingleChoice({
   qid, options, value, onChange, cols = 1,
 }: { qid: string; options: Option[]; value?: string; onChange: (v: string) => void; cols?: 1 | 2 }) {
+  const advance = useSurveyAdvance();
   return (
     <div className={cn("grid gap-2.5", cols === 2 && "sm:grid-cols-2")}>
       {options.map((op) => (
-        <OptionCard key={op.id} label={op.label} selected={value === op.id} onClick={() => onChange(op.id)} testId={`option-${qid}-${op.id}`} />
+        <OptionCard key={op.id} label={op.label} selected={value === op.id} onClick={() => { onChange(op.id); advance(qid); }} testId={`option-${qid}-${op.id}`} />
       ))}
     </div>
   );
@@ -110,6 +114,7 @@ export function SingleChoice({
 export function MultiChoice({
   qid, options, value = [], onChange, max, cols = 1,
 }: { qid: string; options: Option[]; value?: string[]; onChange: (v: string[]) => void; max?: number; cols?: 1 | 2 }) {
+  const advance = useSurveyAdvance();
   const [hint, setHint] = useState(false);
   const toggle = (op: Option) => {
     setHint(false);
@@ -149,6 +154,10 @@ export function MultiChoice({
           </motion.p>
         )}
       </AnimatePresence>
+      <button type="button" disabled={!value.length} onClick={() => advance(qid)} data-testid={`next-question-${qid}`}
+        className="mt-4 flex min-h-11 items-center gap-2 rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5 disabled:opacity-40">
+        انتهيت من الاختيار — السؤال التالي <ChevronLeft className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -183,7 +192,15 @@ export function SkillMatrix({
   qid: string; skills: Skill[]; value?: Record<string, Rating>; onChange: (v: Record<string, Rating>) => void;
   impLabel: string; perfLabel: string; showMissing?: boolean;
 }) {
-  const set = (sid: string, key: keyof Rating, n: number) => onChange({ ...value, [sid]: { ...value[sid], [key]: n } });
+  const advance = useSurveyAdvance();
+  const set = (sid: string, key: keyof Rating, n: number) => {
+    const rating = { ...value[sid], [key]: n };
+    onChange({ ...value, [sid]: rating });
+    if (rating.importance && rating.performance) {
+      const following = skills[skills.findIndex((s) => s.id === sid) + 1];
+      advance(qid, following ? `skill-${qid}-${following.id}` : undefined);
+    }
+  };
   const done = skills.filter((s) => value[s.id]?.importance && value[s.id]?.performance).length;
   return (
     <div>
@@ -197,8 +214,8 @@ export function SkillMatrix({
           const r = value[s.id] ?? {};
           const complete = !!(r.importance && r.performance);
           return (
-            <div key={s.id} data-testid={`skill-${qid}-${s.id}`}
-              className={cn("rounded-xl border p-4 transition-colors",
+            <div key={s.id} id={`skill-${qid}-${s.id}`} tabIndex={-1} data-testid={`skill-${qid}-${s.id}`}
+              className={cn("scroll-mt-24 rounded-xl border p-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
                 complete ? "border-[hsl(var(--teal)/.4)] bg-secondary/40" : showMissing ? "border-destructive/40" : "border-border bg-background/50")}>
               <p className="mb-3 flex gap-2 font-medium leading-relaxed">
                 <span className="text-muted-foreground tabular-nums">{i + 1}.</span>{s.label}
@@ -246,6 +263,7 @@ function RankItem({ track, index, total, move }: { track: Track; index: number; 
 }
 
 export function RankList({ tracks, value, onChange }: { tracks: Track[]; value: string[]; onChange: (v: string[]) => void }) {
+  const advance = useSurveyAdvance();
   const move = (from: number, to: number) => {
     const next = [...value];
     const [x] = next.splice(from, 1);
@@ -261,6 +279,10 @@ export function RankList({ tracks, value, onChange }: { tracks: Track[]; value: 
       <Reorder.Group axis="y" values={value} onReorder={onChange} className="grid gap-2">
         {value.map((id, i) => <RankItem key={id} track={byId[id]} index={i} total={value.length} move={move} />)}
       </Reorder.Group>
+      <button type="button" onClick={() => advance("Q24")} data-testid="next-question-Q24"
+        className="mt-4 flex min-h-11 items-center gap-2 rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
+        اعتمد الترتيب — السؤال التالي <ChevronLeft className="h-4 w-4" />
+      </button>
     </div>
   );
 }
@@ -268,6 +290,8 @@ export function RankList({ tracks, value, onChange }: { tracks: Track[]; value: 
 export function CourseMatrix({
   groups, value = {}, onChange, showMissing,
 }: { groups: CourseGroup[]; value?: Record<string, 0 | 1 | 2>; onChange: (v: Record<string, 0 | 1 | 2>) => void; showMissing?: boolean }) {
+  const advance = useSurveyAdvance();
+  const courses = groups.flatMap((g) => g.courses);
   const levelStyle = ["border-muted-foreground/40 bg-muted text-foreground", "border-[hsl(var(--teal))] bg-[hsl(var(--teal))] text-white", "border-accent bg-accent text-accent-foreground"];
   return (
     <div className="grid gap-4">
@@ -292,13 +316,17 @@ export function CourseMatrix({
               {g.courses.map((c) => {
                 const v = value[c.id];
                 return (
-                  <div key={c.id} className={cn("p-3.5 sm:flex sm:items-center sm:gap-4", showMissing && v === undefined && "bg-destructive/5")} data-testid={`course-${c.id}`}>
+                  <div key={c.id} id={`course-${c.id}`} tabIndex={-1} className={cn("scroll-mt-24 p-3.5 sm:flex sm:items-center sm:gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary", showMissing && v === undefined && "bg-destructive/5")} data-testid={`course-${c.id}`}>
                     <p className="mb-2.5 flex-1 text-[15px] leading-relaxed sm:mb-0">{c.label}</p>
                     <div className="grid grid-cols-3 gap-1.5 sm:w-[360px]">
                       {LEVEL_LABELS.map((l, i) => (
                         <motion.button
                           key={l} type="button" whileTap={{ scale: 0.95 }}
-                          onClick={() => onChange({ ...value, [c.id]: i as 0 | 1 | 2 })}
+                          onClick={() => {
+                            onChange({ ...value, [c.id]: i as 0 | 1 | 2 });
+                            const following = courses[courses.findIndex((course) => course.id === c.id) + 1];
+                            advance("Q25", following ? `course-${following.id}` : undefined);
+                          }}
                           aria-pressed={v === i} data-testid={`course-${c.id}-${i}`}
                           className={cn("min-h-[44px] rounded-lg border px-1.5 text-xs font-medium leading-tight transition-all sm:text-[13px]",
                             v === i ? levelStyle[i] : "border-border bg-background hover:border-primary/40")}

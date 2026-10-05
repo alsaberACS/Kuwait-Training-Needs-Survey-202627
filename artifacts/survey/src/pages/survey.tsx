@@ -16,6 +16,7 @@ import {
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
 } from "@/components/survey/controls";
+import { SurveyNavigationContext, focusSurveyTarget } from "@/components/survey/navigation";
 
 const LS_KEY = "kw-tna-response-id";
 const LS_START = "kw-tna-started";
@@ -96,6 +97,8 @@ export default function SurveyPage() {
   const [netError, setNetError] = useState<null | (() => void)>(null);
   const [done, setDone] = useState(false);
   const [resumeHandled, setResumeHandled] = useState(false);
+  const [advanceRequest, setAdvanceRequest] = useState<{ questionId: string; targetId?: string; step: number } | null>(null);
+  const requestAdvance = (questionId: string, targetId?: string) => setAdvanceRequest({ questionId, targetId, step });
 
   const createM = useCreateResponse();
   const updateM = useUpdateResponse();
@@ -186,11 +189,13 @@ export default function SurveyPage() {
   };
 
   const next = async () => {
+    setAdvanceRequest(null);
     const e = validateStep(step, answers);
     setErrors(e);
     if (Object.keys(e).length) {
       const first = Object.keys(e)[0];
-      document.getElementById(`q-${first}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const target = document.getElementById(`q-${first}`);
+      if (target) focusSurveyTarget(target);
       return;
     }
     setNetError(null);
@@ -235,8 +240,27 @@ export default function SurveyPage() {
     }
   };
 
-  const back = () => { setErrors({}); setNetError(null); setStep((s) => Math.max(STEP_S1, s - 1)); };
+  const back = () => { setAdvanceRequest(null); setErrors({}); setNetError(null); setStep((s) => Math.max(STEP_S1, s - 1)); };
   const busy = createM.isPending || updateM.isPending || completeM.isPending;
+
+  useEffect(() => {
+    if (!advanceRequest || busy || done || advanceRequest.step !== step) return;
+    // Wait for the selected state and any dependent options to render before moving.
+    const timer = window.setTimeout(() => {
+      setAdvanceRequest(null);
+      if (advanceRequest.targetId) {
+        const target = document.getElementById(advanceRequest.targetId);
+        if (target) { focusSurveyTarget(target); return; }
+      }
+      const questions = Array.from(document.querySelectorAll<HTMLElement>("main [data-survey-question]"));
+      const index = questions.findIndex((q) => q.dataset.surveyQuestion === advanceRequest.questionId);
+      if (index < 0) return;
+      const following = questions[index + 1];
+      if (following) focusSurveyTarget(following);
+      else if (step < STEP_S5) void next(); // validates and saves; never submits the survey
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [advanceRequest, answers, busy, step, done]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (done) return <ThankYou />;
   if (checkingResume) return <ResumeSkeleton />;
@@ -250,6 +274,7 @@ export default function SurveyPage() {
   const booked = bookedCourses(answers);
 
   return (
+    <SurveyNavigationContext.Provider value={requestAdvance}>
     <div className="min-h-[100dvh] paper-bg grain">
       <Progress step={step} path={path} saving={updateM.isPending} />
       <main className="mx-auto max-w-3xl px-4 pb-40">
@@ -257,7 +282,7 @@ export default function SurveyPage() {
           <motion.div key={step} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.3 }}>
             {step === STEP_S1 && (
               <>
-                <SectionHead kicker="01" title={SECTION_TITLES.s1} note="سبعة أسئلة قصيرة تساعدنا على فهم موقعك، وتحدد الأسئلة الأنسب لك في الخطوة التالية." />
+                <SectionHead kicker="01" title={SECTION_TITLES.s1} note="سبعة أسئلة قصيرة تساعدنا على فهم موقعك. ننتقل تلقائياً بعد الإجابات الفردية؛ عند تعدد الاختيارات اضغط «السؤال التالي» بعد الانتهاء. يمكنك الرجوع وتعديل إجاباتك." />
                 <div className="grid gap-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <QuestionShell id="Q1" num={nums.Q1} title={Q.Q1.text} error={errors.Q1}>
@@ -281,7 +306,7 @@ export default function SurveyPage() {
                         return (
                           <div key={op.id}>
                             <OptionCard label={op.label} selected={sel} testId={`option-Q5-${op.id}`}
-                              onClick={() => set("Q5", sel ? answers.Q5 : { sector: op.id })} />
+                              onClick={() => { set("Q5", sel ? answers.Q5 : { sector: op.id }); if (!sub) requestAdvance("Q5"); }} />
                             <AnimatePresence>
                               {sel && sub && (
                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
@@ -292,7 +317,7 @@ export default function SurveyPage() {
                                         const on = answers.Q5?.sub === s.id;
                                         return (
                                           <button key={s.id} type="button" data-testid={`option-Q5-${op.id}-${s.id}`}
-                                            onClick={() => set("Q5", { sector: op.id, sub: s.id, other: s.other ? answers.Q5?.other : undefined })}
+                                            onClick={() => { set("Q5", { sector: op.id, sub: s.id, other: s.other ? answers.Q5?.other : undefined }); if (!s.other) requestAdvance("Q5"); }}
                                             className={cn("min-h-[42px] rounded-full border px-4 text-sm transition-all",
                                               on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:border-primary/50")}>
                                             {s.label}
@@ -301,10 +326,16 @@ export default function SurveyPage() {
                                       })}
                                     </div>
                                     {answers.Q5?.sub === "other" && (
-                                      <input autoFocus value={answers.Q5?.other ?? ""} data-testid="input-Q5-other"
-                                        onChange={(e) => set("Q5", { ...answers.Q5, other: e.target.value })}
-                                        placeholder="اكتب اسم القطاع أو الجهة"
-                                        className="mt-3 h-12 w-full rounded-xl border border-input bg-background px-4 outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
+                                      <div>
+                                        <input autoFocus value={answers.Q5?.other ?? ""} data-testid="input-Q5-other"
+                                          onChange={(e) => set("Q5", { ...answers.Q5, other: e.target.value })}
+                                          placeholder="اكتب اسم القطاع أو الجهة"
+                                          className="mt-3 h-12 w-full rounded-xl border border-input bg-background px-4 outline-none focus:border-primary focus:ring-2 focus:ring-ring/30" />
+                                        <button type="button" disabled={!answers.Q5?.other?.trim()} onClick={() => requestAdvance("Q5")} data-testid="next-question-Q5"
+                                          className="mt-3 min-h-11 rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary disabled:opacity-40">
+                                          السؤال التالي
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 </motion.div>
@@ -327,7 +358,7 @@ export default function SurveyPage() {
                         const Icon = p === "B2B" ? Building2 : UserRound;
                         const op = Q.Q7.options.find((x) => x.id === p)!;
                         return (
-                          <motion.button key={p} type="button" whileTap={{ scale: 0.98 }} onClick={() => set("Q7", p)} data-testid={`option-Q7-${p}`}
+                          <motion.button key={p} type="button" whileTap={{ scale: 0.98 }} onClick={() => { set("Q7", p); requestAdvance("Q7"); }} data-testid={`option-Q7-${p}`}
                             className={cn("relative flex flex-col items-start gap-3 overflow-hidden rounded-2xl border-2 p-5 text-start transition-all",
                               sel ? "border-primary ink-panel shadow-xl" : sug ? "border-accent bg-accent/[.07] ring-4 ring-accent/15" : "border-border bg-background hover:border-primary/40")}>
                             {sel && <div className="absolute -start-6 -top-6 h-24 w-24 sadu opacity-15 rotate-12" />}
@@ -498,6 +529,7 @@ export default function SurveyPage() {
         </div>
       </div>
     </div>
+    </SurveyNavigationContext.Provider>
   );
 }
 
