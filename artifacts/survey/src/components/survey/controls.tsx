@@ -150,7 +150,7 @@ export function MultiChoice({
         {hint && (
           <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
             className="mt-3 rounded-lg bg-accent/15 px-3 py-2 text-sm text-[hsl(32_70%_28%)]">
-            يمكنك اختيار خيارين فقط. ألغِ أحد اختياراتك أولاً إذا أردت تغييره.
+            يمكنك اختيار {max} خيارات كحد أقصى. ألغِ أحد اختياراتك أولاً إذا أردت تغييره.
           </motion.p>
         )}
       </AnimatePresence>
@@ -209,7 +209,7 @@ export function SkillMatrix({
         <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-accent" />{perfLabel}</span>
         <span className="ms-auto font-medium tabular-nums">{done}/{skills.length}</span>
       </div>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className={cn("grid gap-3", qid !== "Q14" && "lg:grid-cols-2")}>
         {skills.map((s, i) => {
           const r = value[s.id] ?? {};
           const complete = !!(r.importance && r.performance);
@@ -249,7 +249,10 @@ function RankItem({ track, index, total, move }: { track: Track; index: number; 
         index === 0 ? "bg-accent text-accent-foreground" : index < 3 ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}>
         {index + 1}
       </span>
-      <span className="flex-1 text-[15px] font-medium leading-snug">{track.label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-semibold leading-relaxed">{track.label}</span>
+        {track.english && <span dir="ltr" className="mt-1 block text-start text-xs leading-relaxed text-muted-foreground">{track.english}</span>}
+      </span>
       <div className="flex flex-col">
         <button type="button" disabled={index === 0} onClick={() => move(index, index - 1)} className="rounded p-1 hover:bg-muted disabled:opacity-30" aria-label="أعلى" data-testid={`rank-up-${track.id}`}>
           <ChevronUp className="h-4 w-4" />
@@ -274,7 +277,7 @@ export function RankList({ tracks, value, onChange }: { tracks: Track[]; value: 
   return (
     <div>
       <div className="mb-2 flex justify-between text-xs font-medium text-muted-foreground">
-        <span>1 = الأهم</span><span>6 = الأقل أهمية</span>
+        <span>1 = الأهم</span><span>{tracks.length} = الأقل أهمية</span>
       </div>
       <Reorder.Group axis="y" values={value} onReorder={onChange} className="grid gap-2">
         {value.map((id, i) => <RankItem key={id} track={byId[id]} index={i} total={value.length} move={move} />)}

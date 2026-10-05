@@ -96,7 +96,7 @@ export const COURSES: Record<string, { label: string; group: string }> = {
   C70: { label: "منسق مبيعات وتطوير أعمال", group: "G6" },
 };
 
-export const TRACKS: Record<string, string> = {
+export const LEGACY_TRACKS: Record<string, string> = {
   T1: "الذكاء الاصطناعي وأتمتة الأعمال",
   T2: "الحوكمة والاستدامة (ESG)",
   T3: "الأمن السيبراني وحماية البيانات",
@@ -105,12 +105,22 @@ export const TRACKS: Record<string, string> = {
   T6: "التحكيم التجاري وعقود الاستثمار",
 };
 
+export const TRACKS: Record<string, string> = {
+  R1: "المهارات الشخصية",
+  R2: "الذكاء الاصطناعي والأمن السيبراني",
+  R3: "تحليلات الأعمال وتحليل البيانات",
+  R4: "المشروعات الصغيرة والمتوسطة",
+  R5: "تطوير الأعمال والإدارة",
+  R6: "المالية",
+  R7: "الجاهزية المهنية والتوظيف",
+};
+
 export const QUESTION_LABELS: Record<string, string> = {
   Q1: "الجنسية", Q2: "الجنس", Q3: "الفئة العمرية", Q4: "المستوى التعليمي",
   Q5: "القطاع الرئيسي لجهة العمل", Q6: "المستوى الإداري أو الوظيفي الحالي", Q7: "طبيعة المشاركة",
   Q8: "حجم المؤسسة", Q9: "ميزانية التدريب", Q10: "الحلول المؤسسية", Q11: "قياس العائد على الاستثمار",
-  Q15: "برامج الشباب والجاهزية المهنية", Q19: "أسلوب تقديم التدريب المفضل", Q20: "مدة البرنامج",
-  Q21: "الفترة الزمنية", Q22: "لغة البرنامج", Q23: "الشهادة والاعتماد",
+  Q15: "برامج الشباب والجاهزية المهنية", Q19: "أسلوب تقديم التدريب المفضل", Q20: "مدة البرنامج المفضلة",
+  Q21: "الفترة الزمنية المفضلة للتدريب", Q22: "لغة البرنامج", Q23: "الشهادة والاعتماد",
   Q25G: "المسارات التدريبية التي تهم المشارك", Q26: "العنصر التنافسي الأهم",
 };
 
@@ -207,4 +217,11 @@ export const ITEM_WORKSHOPS: Record<string, string[]> = {
   T4: ["Advanced Financial Analysis and Budgeting", "Applied Business Intelligence: From Spreadsheets to Dashboards"],
   T5: ["Strategic Leadership and High-Performance Teams", "Adaptability and Change Readiness"],
   T6: [],
+  R1: ["Professional Communication, Presentation and Emotional Intelligence", "Critical Thinking and Structured Reasoning", "Time and Priority Management and Personal Productivity"],
+  R2: ["AI for Business and Decision Support", "Cybersecurity Essentials for Non-Technical Staff", "Securing AI Deployments"],
+  R3: ["Applied Business Intelligence: From Spreadsheets to Dashboards", "Data Quality and Preparation", "People Analytics for HR Teams"],
+  R4: ["SME Growth Clinic", "Entrepreneurship and Business Model Design for SMEs", "Finance for SMEs"],
+  R5: ["Strategic Leadership and High-Performance Teams", "Adaptability and Change Readiness", "Executive Secretarial and Office Management"],
+  R6: ["Advanced Financial Analysis and Budgeting", "Finance for Non-Financial Managers and IFRS Reporting Essentials", "Advanced Banking and Financial Services Fundamentals"],
+  R7: ["Customer Service Readiness", "Administrative Support Readiness", "Logistics Readiness"],
 };

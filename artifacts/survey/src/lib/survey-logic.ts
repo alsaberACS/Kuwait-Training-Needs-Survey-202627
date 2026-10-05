@@ -21,8 +21,8 @@ export function suggestPath(a: Answers): Path | undefined {
 
 export function questionNumbers(path?: Path): Record<string, number> {
   const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7",
-    ...(path === "B2C" ? ["Q15", "Q18"] : ["Q8", "Q9", "Q10", "Q11", "Q14"]),
-    "Q19", "Q20", "Q21", "Q22", "Q23", "Q24", "Q25G", "Q25", "Q26"];
+    ...(path === "B2C" ? ["Q15", "Q18"] : ["Q8", "Q9", "Q10", "Q14"]),
+    "Q19", "Q20", "Q21", "Q22", "Q24", "Q25G", "Q25", "Q26"];
   return Object.fromEntries(order.map((id, i) => [id, i + 1]));
 }
 
@@ -54,6 +54,25 @@ export function pruneCourseAnswers(q25: Answers["Q25"], groupIds: string[]): Ans
 
 export const defaultTrackOrder = () => TRACKS.map((t) => t.id);
 
+export const ownerAllowed = (a: Answers) => !["private", "government"].includes(a.Q5?.sector ?? "");
+export const validTrackOrder = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.length === TRACKS.length && new Set(v).size === TRACKS.length &&
+  TRACKS.every((t) => v.includes(t.id));
+
+/** Normalize resumed drafts only; stored historical responses are left untouched. */
+export function normalizeDraft(raw: Record<string, unknown>): Answers {
+  const a = { ...raw } as Answers;
+  for (const key of ["Q19", "Q20", "Q21"] as const) {
+    const v = raw[key];
+    a[key] = typeof v === "string" ? [v] : Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : undefined;
+  }
+  delete a.Q11;
+  delete a.Q23;
+  if (!ownerAllowed(a) && a.Q6 === "owner") delete a.Q6;
+  if (!validTrackOrder(a.Q24)) delete a.Q24;
+  return a;
+}
+
 const REQ = "يرجى اختيار إجابة للمتابعة";
 export function validateStep(step: number, a: Answers): Record<string, string> {
   const e: Record<string, string> = {};
@@ -63,6 +82,7 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
     if (!q5?.sector) e.Q5 = REQ;
     else if ((q5.sector === "private" || q5.sector === "government") && !q5.sub) e.Q5 = "يرجى تحديد المجال من القائمة الفرعية";
     else if (q5.sub === "other" && !q5.other?.trim()) e.Q5 = "يرجى كتابة اسم القطاع أو الجهة";
+    if (!ownerAllowed(a) && a.Q6 === "owner") e.Q6 = "يرجى اختيار مستوى وظيفي يتناسب مع القطاع المحدد";
     if (!a.Q7) e.Q7 = "يرجى تحديد صفتك في المشاركة لنعرض لك الأسئلة المناسبة";
   }
   if (step === STEP_PATH) {
@@ -70,7 +90,6 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
       if (!a.Q8) e.Q8 = REQ;
       if (!a.Q9) e.Q9 = REQ;
       if (!a.Q10?.length) e.Q10 = "اختر خياراً واحداً على الأقل";
-      if (!a.Q11?.length) e.Q11 = "اختر خياراً واحداً على الأقل (حتى خيارين)";
       const m = SKILLS.filter((s) => !a.Q14?.[s.id]?.importance || !a.Q14?.[s.id]?.performance).length;
       if (m) e.Q14 = `بقي ${m} من المهارات بحاجة إلى تقييم كامل (الأهمية والأداء)`;
     } else {
@@ -80,12 +99,15 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
     }
   }
   if (step === STEP_S4) {
-    (["Q19", "Q20", "Q21", "Q22", "Q23"] as const).forEach((k) => { if (!a[k]) e[k] = REQ; });
-    if (!a.Q24 || a.Q24.length !== 6) e.Q24 = "يرجى ترتيب المسارات";
+    (["Q19", "Q20", "Q21"] as const).forEach((k) => {
+      if (!Array.isArray(a[k]) || !a[k]?.length || a[k]?.some((id) => !Q[k].options.some((o) => o.id === id))) e[k] = "اختر خياراً واحداً على الأقل";
+    });
+    if (!a.Q22) e.Q22 = REQ;
+    if (!validTrackOrder(a.Q24)) e.Q24 = "يرجى ترتيب المسارات السبعة";
     if (!a.Q25G?.length) e.Q25G = "اختر مساراً تدريبياً واحداً على الأقل لعرض الدورات";
     const m = selectedCourses(a).filter((c) => a.Q25?.[c.id] === undefined).length;
     if (m) e.Q25 = `بقي ${m} من الدورات دون اختيار`;
-    if (!a.Q26?.length) e.Q26 = "اختر عنصراً واحداً على الأقل (حتى عنصرين)";
+    if (!a.Q26?.length || a.Q26.length > Q.Q26.max) e.Q26 = "اختر عنصراً واحداً على الأقل (حتى 3 عناصر)";
   }
   return e;
 }

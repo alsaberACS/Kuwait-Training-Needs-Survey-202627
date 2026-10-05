@@ -3,7 +3,7 @@ export interface Option { id: string; label: string; exclusive?: boolean; other?
 export interface Skill { id: string; label: string }
 export interface Course { id: string; label: string }
 export interface CourseGroup { id: string; label: string; courses: Course[] }
-export interface Track { id: string; label: string }
+export interface Track { id: string; label: string; english?: string }
 
 export const SURVEY_TITLE = "استبانة دراسة التموضع التنافسي والاحتياجات التدريبية في الكويت 2026/2027";
 export const SURVEY_INTRO =
@@ -150,14 +150,14 @@ export const Q = {
     ],
   },
   Q20: {
-    id: "Q20", text: "مدة البرنامج",
+    id: "Q20", text: "مدة البرنامج المفضلة",
     options: [
       o("short", "دورة قصيرة (أقل من 3 ساعات)"), o("1_2_days", "من يوم إلى يومين"),
       o("3_5_days", "من 3 إلى 5 أيام"), o("extended", "برنامج ممتد (عدة أسابيع)"),
     ],
   },
   Q21: {
-    id: "Q21", text: "الفترة الزمنية",
+    id: "Q21", text: "الفترة الزمنية المفضلة للتدريب",
     options: [
       o("morning", "صباح أيام العمل (أثناء الدوام)"), o("evening", "مساء أيام العمل (بعد الدوام)"),
       o("weekend", "عطلة نهاية الأسبوع (Weekend)"),
@@ -175,7 +175,7 @@ export const Q = {
       o("attendance", "شهادة حضور فقط"), o("not_important", "الشهادة غير مهمة بالنسبة لي"),
     ],
   },
-  Q24: { id: "Q24", text: "ترتيب المسارات المستقبلية", hint: "رتّب المسارات من 1 (الأهم) إلى 6" },
+  Q24: { id: "Q24", text: "ترتيب المسارات المستقبلية", hint: "رتّب المسارات السبعة من 1 (الأهم) إلى 7 (الأقل أهمية). اسحب البطاقات أو استخدم الأسهم." },
   Q25G: {
     id: "Q25G", text: "ما المسارات التدريبية التي تهمك؟",
     hint: "اختر مساراً واحداً أو أكثر، وسنعرض لك دورات المسارات التي اخترتها فقط.",
@@ -186,7 +186,7 @@ export const Q = {
     levels: ["غير مهتم", "مهتم مستقبلاً", "أرغب بالحجز فوراً"] as const,
   },
   Q26: {
-    id: "Q26", text: "العنصر التنافسي الأهم", max: 2,
+    id: "Q26", text: "العنصر التنافسي الأهم", max: 3,
     options: [
       o("real_certs", "شهادات واعتمادات مهنية دولية حقيقية وليست شرفية"),
       o("practitioners", "مدربون ممارسون من واقع السوق الكويتي والخليجي بعيداً عن التنظير"),
@@ -226,7 +226,8 @@ export const SKILLS: Skill[] = [
   "التفكير النقدي والاستباقي وتقييم المخاطر",
 ].map((label, i) => ({ id: `S${i + 1}`, label }));
 
-export const TRACKS: Track[] = [
+/** Retained only for interpreting historical responses; never reuse these IDs. */
+export const LEGACY_TRACKS: Track[] = [
   "الذكاء الاصطناعي وأتمتة الأعمال",
   "الحوكمة والاستدامة (ESG)",
   "الأمن السيبراني وحماية البيانات",
@@ -234,6 +235,16 @@ export const TRACKS: Track[] = [
   "القيادة وإدارة التغيير والأزمات",
   "التحكيم التجاري وعقود الاستثمار",
 ].map((label, i) => ({ id: `T${i + 1}`, label }));
+
+export const TRACKS: Track[] = [
+  { id: "R1", label: "المهارات الشخصية", english: "Soft Skills" },
+  { id: "R2", label: "الذكاء الاصطناعي والأمن السيبراني", english: "AI & Cybersecurity" },
+  { id: "R3", label: "تحليلات الأعمال وتحليل البيانات", english: "Business Analytics & Data Analytics" },
+  { id: "R4", label: "المشروعات الصغيرة والمتوسطة", english: "SME" },
+  { id: "R5", label: "تطوير الأعمال والإدارة", english: "Business & Management Development" },
+  { id: "R6", label: "المالية", english: "Financial" },
+  { id: "R7", label: "الجاهزية المهنية والتوظيف", english: "Career Readiness & Employment" },
+];
 
 const c = (n: number, label: string): Course => ({ id: `C${n}`, label });
 export const COURSE_GROUPS: CourseGroup[] = [
@@ -344,7 +355,7 @@ export const SUB_LABELS: Record<string, Record<string, string>> = Object.fromEnt
   Object.entries(Q5_SUB).map(([k, v]) => [k, Object.fromEntries(v.map((op) => [op.id, op.label]))]),
 );
 export const SKILL_LABELS: Record<string, string> = Object.fromEntries(SKILLS.map((s) => [s.id, s.label]));
-export const TRACK_LABELS: Record<string, string> = Object.fromEntries(TRACKS.map((s) => [s.id, s.label]));
+export const TRACK_LABELS: Record<string, string> = Object.fromEntries([...LEGACY_TRACKS, ...TRACKS].map((s) => [s.id, s.label]));
 export const COURSE_LABELS: Record<string, string> = Object.fromEntries(ALL_COURSES.map((s) => [s.id, s.label]));
 export const LEVEL_LABELS = Q.Q25.levels;
 export const optionLabel = (qid: string, id: string) => OPTION_LABELS[qid]?.[id] ?? id;
@@ -356,6 +367,6 @@ export interface Answers {
   Q1?: string; Q2?: string; Q3?: string; Q4?: string; Q5?: Q5Answer; Q6?: string; Q7?: Path;
   Q8?: string; Q9?: string; Q10?: string[]; Q11?: string[]; Q14?: Record<string, Rating>;
   Q15?: string[]; Q18?: Record<string, Rating>;
-  Q19?: string; Q20?: string; Q21?: string; Q22?: string; Q23?: string;
+  Q19?: string[]; Q20?: string[]; Q21?: string[]; Q22?: string; Q23?: string;
   Q24?: string[]; Q25G?: string[]; Q25?: Record<string, 0 | 1 | 2>; Q26?: string[];
 }

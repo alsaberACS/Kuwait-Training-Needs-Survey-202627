@@ -1,6 +1,6 @@
 import type { ResponseRow } from "@workspace/db";
 import { catalogue, CATEGORY_LABELS, type Workshop } from "../data/catalogue";
-import { SKILLS, COURSES, COURSE_GROUPS, TRACKS, QUESTION_LABELS, SECTION_LABELS, ITEM_WORKSHOPS } from "../data/survey-items";
+import { SKILLS, COURSES, COURSE_GROUPS, TRACKS, LEGACY_TRACKS, QUESTION_LABELS, SECTION_LABELS, ITEM_WORKSHOPS } from "../data/survey-items";
 
 type Answers = Record<string, unknown>;
 type Rating = { importance?: number; performance?: number };
@@ -29,7 +29,8 @@ function countItems(rows: ResponseRow[], pick: (a: Answers) => string[]): { key:
 }
 
 const single = (q: string) => (a: Answers) => [answerKey(a, q)];
-const multi = (q: string) => (a: Answers) => (Array.isArray(a[q]) ? (a[q] as unknown[]).map(str) : []);
+// Historical single-choice preferences still count as one selected option.
+const multi = (q: string) => (a: Answers) => [...new Set(Array.isArray(a[q]) ? (a[q] as unknown[]).map(str) : [str(a[q])])];
 
 export function summary(all: ResponseRow[]) {
   const completed = all.filter((r) => r.status === "complete");
@@ -143,19 +144,26 @@ export function courseDemand(rows: ResponseRow[]) {
 }
 
 export function trackRanks(rows: ResponseRow[]) {
-  const orders = rows.map((r) => (r.answers as Answers).Q24).filter((v): v is string[] => Array.isArray(v) && v.length === 6);
+  const validOrder = (v: unknown, ids: string[]): v is string[] =>
+    Array.isArray(v) && v.length === ids.length && new Set(v).size === ids.length && ids.every((id) => v.includes(id));
+  const currentIds = Object.keys(TRACKS);
+  const legacyIds = Object.keys(LEGACY_TRACKS);
+  const orders = rows.map((r) => (r.answers as Answers).Q24)
+    .filter((v): v is string[] => validOrder(v, currentIds) || validOrder(v, legacyIds));
   return {
-    items: Object.entries(TRACKS)
+    items: Object.entries({ ...TRACKS, ...LEGACY_TRACKS })
+      .filter(([id]) => id in TRACKS || orders.some((o) => o.includes(id)))
       .map(([trackId, label]) => {
         const ranks = orders.map((o) => o.indexOf(trackId) + 1).filter((k) => k > 0);
         const m = mean(ranks);
+        const size = trackId in TRACKS ? currentIds.length : legacyIds.length;
         return {
           trackId,
-          label,
+          label: trackId in TRACKS ? label : `${label} (مسار سابق)`,
           n: ranks.length,
           meanRank: r2(m),
           firstPlaceShare: ranks.length ? r2((ranks.filter((k) => k === 1).length / ranks.length) * 100) : 0,
-          score: ranks.length ? r2(((6 - m) / 5) * 100) : 0,
+          score: ranks.length ? r2(((size - m) / (size - 1)) * 100) : 0,
         };
       })
       .sort((a, b) => b.score - a.score),
@@ -163,7 +171,7 @@ export function trackRanks(rows: ResponseRow[]) {
 }
 
 export function preferences(rows: ResponseRow[]) {
-  const multis = new Set(["Q10", "Q11", "Q15", "Q25G", "Q26"]);
+  const multis = new Set(["Q10", "Q11", "Q15", "Q19", "Q20", "Q21", "Q25G", "Q26"]);
   return {
     questions: Object.entries(QUESTION_LABELS).map(([questionId, label]) => {
       const pick = multis.has(questionId) ? multi(questionId) : single(questionId);

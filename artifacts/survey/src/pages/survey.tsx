@@ -11,7 +11,7 @@ import {
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-  orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone,
+   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, normalizeDraft,
 } from "@/lib/survey-logic";
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
@@ -122,10 +122,12 @@ export default function SurveyPage() {
   const doResume = () => {
     const r = resumeQ.data!;
     setResponseId(r.id);
-    setAnswers((r.answers ?? {}) as Answers);
+    const resumed = normalizeDraft(r.answers ?? {});
+    setAnswers(resumed);
     setConsent(true);
     if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
-    setStep(Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5));
+    const requestedStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5);
+    setStep(!resumed.Q6 ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
     setResumeHandled(true);
   };
   const startFresh = () => {
@@ -133,7 +135,11 @@ export default function SurveyPage() {
   };
 
   const set = <K extends keyof Answers>(k: K, v: Answers[K]) => {
-    setAnswers((a) => ({ ...a, [k]: v }));
+    setAnswers((a) => {
+      const next = { ...a, [k]: v };
+      if (k === "Q5" && !ownerAllowed(next) && next.Q6 === "owner") delete next.Q6;
+      return next;
+    });
     setErrors((e) => { if (!e[k as string]) return e; const n = { ...e }; delete n[k as string]; return n; });
   };
 
@@ -284,7 +290,7 @@ export default function SurveyPage() {
               <>
                 <SectionHead kicker="01" title={SECTION_TITLES.s1} note="سبعة أسئلة قصيرة تساعدنا على فهم موقعك. ننتقل تلقائياً بعد الإجابات الفردية؛ عند تعدد الاختيارات اضغط «السؤال التالي» بعد الانتهاء. يمكنك الرجوع وتعديل إجاباتك." />
                 <div className="grid gap-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                   <div className="grid gap-4">
                     <QuestionShell id="Q1" num={nums.Q1} title={Q.Q1.text} error={errors.Q1}>
                       <SingleChoice qid="Q1" options={Q.Q1.options} value={answers.Q1} onChange={(v) => set("Q1", v)} />
                     </QuestionShell>
@@ -347,7 +353,7 @@ export default function SurveyPage() {
                     </div>
                   </QuestionShell>
                   <QuestionShell id="Q6" num={nums.Q6} title={Q.Q6.text} error={errors.Q6}>
-                    <SingleChoice qid="Q6" options={Q.Q6.options} value={answers.Q6} onChange={(v) => set("Q6", v)} />
+                     <SingleChoice qid="Q6" options={Q.Q6.options.filter((o) => o.id !== "owner" || ownerAllowed(answers))} value={answers.Q6} onChange={(v) => set("Q6", v)} />
                   </QuestionShell>
                   <QuestionShell id="Q7" num={nums.Q7} title={Q.Q7.text} error={errors.Q7}
                     hint={suggestion && !answers.Q7 ? "بناءً على إجاباتك، ميّزنا لك المسار الأقرب. أكّد اختيارك بالضغط عليه." : "اختيارك هنا يحدد الأسئلة التالية."}>
@@ -393,9 +399,6 @@ export default function SurveyPage() {
                   <QuestionShell id="Q10" num={nums.Q10} title={Q.Q10.text} hint="يمكنك اختيار أكثر من خيار" error={errors.Q10}>
                     <MultiChoice qid="Q10" options={Q.Q10.options} value={answers.Q10} onChange={(v) => set("Q10", v)} />
                   </QuestionShell>
-                  <QuestionShell id="Q11" num={nums.Q11} title={Q.Q11.text} error={errors.Q11}>
-                    <MultiChoice qid="Q11" max={2} options={Q.Q11.options} value={answers.Q11} onChange={(v) => set("Q11", v)} />
-                  </QuestionShell>
                   <QuestionShell id="Q14" num={nums.Q14} title={Q.Q14.text} hint="قيّم كل مهارة مرتين: أهميتها، ثم مستوى الأداء الحالي" error={errors.Q14}>
                     <SkillMatrix qid="Q14" skills={SKILLS} value={answers.Q14} onChange={(v) => set("Q14", v)} impLabel={Q.Q14.importance} perfLabel={Q.Q14.performance} showMissing={!!errors.Q14} />
                   </QuestionShell>
@@ -421,24 +424,21 @@ export default function SurveyPage() {
               <>
                 <SectionHead kicker="03" title={SECTION_TITLES.s4} note="اقتربنا من النهاية. هنا نتعرف على تفضيلاتك والدورات التي تهمك." />
                 <div className="grid gap-4">
-                  <QuestionShell id="Q19" num={nums.Q19} title={Q.Q19.text} error={errors.Q19}>
-                    <SingleChoice qid="Q19" cols={2} options={Q.Q19.options} value={answers.Q19} onChange={(v) => set("Q19", v)} />
+                   <QuestionShell id="Q19" num={nums.Q19} title={Q.Q19.text} hint="يمكنك اختيار أكثر من خيار" error={errors.Q19}>
+                     <MultiChoice qid="Q19" cols={2} options={Q.Q19.options} value={answers.Q19} onChange={(v) => set("Q19", v)} />
                   </QuestionShell>
-                  <QuestionShell id="Q20" num={nums.Q20} title={Q.Q20.text} error={errors.Q20}>
-                    <SingleChoice qid="Q20" cols={2} options={Q.Q20.options} value={answers.Q20} onChange={(v) => set("Q20", v)} />
+                   <QuestionShell id="Q20" num={nums.Q20} title={Q.Q20.text} hint="يمكنك اختيار أكثر من خيار" error={errors.Q20}>
+                     <MultiChoice qid="Q20" cols={2} options={Q.Q20.options} value={answers.Q20} onChange={(v) => set("Q20", v)} />
                   </QuestionShell>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <QuestionShell id="Q21" num={nums.Q21} title={Q.Q21.text} error={errors.Q21}>
-                      <SingleChoice qid="Q21" options={Q.Q21.options} value={answers.Q21} onChange={(v) => set("Q21", v)} />
+                     <QuestionShell id="Q21" num={nums.Q21} title={Q.Q21.text} hint="يمكنك اختيار أكثر من خيار" error={errors.Q21}>
+                       <MultiChoice qid="Q21" options={Q.Q21.options} value={answers.Q21} onChange={(v) => set("Q21", v)} />
                     </QuestionShell>
                     <QuestionShell id="Q22" num={nums.Q22} title={Q.Q22.text} error={errors.Q22}>
                       <SingleChoice qid="Q22" options={Q.Q22.options} value={answers.Q22} onChange={(v) => set("Q22", v)} />
                     </QuestionShell>
                   </div>
-                  <QuestionShell id="Q23" num={nums.Q23} title={Q.Q23.text} error={errors.Q23}>
-                    <SingleChoice qid="Q23" cols={2} options={Q.Q23.options} value={answers.Q23} onChange={(v) => set("Q23", v)} />
-                  </QuestionShell>
-                  <QuestionShell id="Q24" num={nums.Q24} title={Q.Q24.text} hint="اسحب البطاقات أو استخدم الأسهم. الأعلى هو الأهم." error={errors.Q24}>
+                   <QuestionShell id="Q24" num={nums.Q24} title={Q.Q24.text} hint={Q.Q24.hint} error={errors.Q24}>
                     <RankList tracks={TRACKS} value={answers.Q24 ?? defaultTrackOrder()} onChange={(v) => set("Q24", v)} />
                   </QuestionShell>
                   <QuestionShell id="Q25G" num={nums.Q25G} title={Q.Q25G.text} hint={Q.Q25G.hint} error={errors.Q25G}>
@@ -459,7 +459,7 @@ export default function SurveyPage() {
                     )}
                   </QuestionShell>
                   <QuestionShell id="Q26" num={nums.Q26} title={Q.Q26.text} error={errors.Q26}>
-                    <MultiChoice qid="Q26" max={2} options={Q.Q26.options} value={answers.Q26} onChange={(v) => set("Q26", v)} />
+                     <MultiChoice qid="Q26" max={Q.Q26.max} options={Q.Q26.options} value={answers.Q26} onChange={(v) => set("Q26", v)} />
                   </QuestionShell>
                 </div>
               </>
