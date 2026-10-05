@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { Q, TRACKS, LEGACY_TRACKS, SKILLS, COURSE_GROUPS, type Answers } from "../../artifacts/survey/src/lib/survey-definition";
-import { defaultTrackOrder, normalizeDraft, ownerAllowed, questionNumbers, validateStep, validTrackOrder } from "../../artifacts/survey/src/lib/survey-logic";
+import { defaultTrackOrder, normalizeDraft, ownerAllowed, jobLevelRequired, questionNumbers, validateStep, validTrackOrder } from "../../artifacts/survey/src/lib/survey-logic";
 import { preferences, trackRanks, matching } from "../../artifacts/api-server/src/lib/analytics";
 import { catalogue } from "../../artifacts/api-server/src/data/catalogue";
 import { ITEM_WORKSHOPS, TRACKS as SERVER_TRACKS } from "../../artifacts/api-server/src/data/survey-items";
@@ -17,6 +17,13 @@ const base: Answers = {
   Q26: ["real_certs", "practitioners", "simulation"],
 };
 for (const step of [1, 2, 3]) assert.deepEqual(validateStep(step, base), {});
+const notWorking = { ...base, Q5: { sector: "not_working" }, Q6: undefined } satisfies Answers;
+assert.equal(jobLevelRequired(notWorking), false);
+assert.deepEqual(validateStep(1, notWorking), {});
+assert.equal(questionNumbers("B2C", "not_working").Q6, undefined);
+assert.equal(questionNumbers("B2C", "not_working").Q7, 6);
+assert.equal(normalizeDraft({ ...notWorking, Q6: "senior" }).Q6, undefined);
+assert.ok(validateStep(1, { ...notWorking, Q5: { sector: "nonprofit" } }).Q6);
 for (const path of ["B2B", "B2C"] as const) {
   assert.equal(questionNumbers(path).Q11, undefined);
   assert.equal(questionNumbers(path).Q23, undefined);

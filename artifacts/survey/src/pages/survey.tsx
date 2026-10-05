@@ -11,7 +11,7 @@ import {
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, normalizeDraft,
+   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, normalizeDraft,
 } from "@/lib/survey-logic";
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
@@ -127,7 +127,7 @@ export default function SurveyPage() {
     setConsent(true);
     if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
     const requestedStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5);
-    setStep(!resumed.Q6 ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
+    setStep(jobLevelRequired(resumed) && !resumed.Q6 ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
     setResumeHandled(true);
   };
   const startFresh = () => {
@@ -137,14 +137,21 @@ export default function SurveyPage() {
   const set = <K extends keyof Answers>(k: K, v: Answers[K]) => {
     setAnswers((a) => {
       const next = { ...a, [k]: v };
-      if (k === "Q5" && !ownerAllowed(next) && next.Q6 === "owner") delete next.Q6;
+      if (k === "Q5" && (!jobLevelRequired(next) || (!ownerAllowed(next) && next.Q6 === "owner"))) delete next.Q6;
       return next;
     });
-    setErrors((e) => { if (!e[k as string]) return e; const n = { ...e }; delete n[k as string]; return n; });
+    setErrors((e) => {
+      const clearLevelError = k === "Q5" && !jobLevelRequired({ Q5: v as Answers["Q5"] });
+      if (!e[k as string] && !(clearLevelError && e.Q6)) return e;
+      const n = { ...e };
+      delete n[k as string];
+      if (clearLevelError) delete n.Q6;
+      return n;
+    });
   };
 
   const path = answers.Q7;
-  const nums = useMemo(() => questionNumbers(path), [path]);
+  const nums = useMemo(() => questionNumbers(path, answers.Q5?.sector), [path, answers.Q5?.sector]);
   const suggestion = suggestPath(answers);
   const groups = useMemo(() => orderedCourseGroups(answers), [answers.Q7, answers.Q5?.sector, answers.Q6]); // eslint-disable-line react-hooks/exhaustive-deps
   const suggested = suggestedGroups(answers);
@@ -288,7 +295,7 @@ export default function SurveyPage() {
           <motion.div key={step} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.3 }}>
             {step === STEP_S1 && (
               <>
-                <SectionHead kicker="01" title={SECTION_TITLES.s1} note="سبعة أسئلة قصيرة تساعدنا على فهم موقعك. ننتقل تلقائياً بعد الإجابات الفردية؛ عند تعدد الاختيارات اضغط «السؤال التالي» بعد الانتهاء. يمكنك الرجوع وتعديل إجاباتك." />
+                <SectionHead kicker="01" title={SECTION_TITLES.s1} note="أسئلة قصيرة تساعدنا على فهم موقعك. ننتقل تلقائياً بعد الإجابات الفردية؛ عند تعدد الاختيارات اضغط «السؤال التالي» بعد الانتهاء. يمكنك الرجوع وتعديل إجاباتك." />
                 <div className="grid gap-4">
                    <div className="grid gap-4">
                     <QuestionShell id="Q1" num={nums.Q1} title={Q.Q1.text} error={errors.Q1}>
@@ -352,9 +359,9 @@ export default function SurveyPage() {
                       })}
                     </div>
                   </QuestionShell>
-                  <QuestionShell id="Q6" num={nums.Q6} title={Q.Q6.text} error={errors.Q6}>
+                  {jobLevelRequired(answers) && <QuestionShell id="Q6" num={nums.Q6} title={Q.Q6.text} error={errors.Q6}>
                      <SingleChoice qid="Q6" options={Q.Q6.options.filter((o) => o.id !== "owner" || ownerAllowed(answers))} value={answers.Q6} onChange={(v) => set("Q6", v)} />
-                  </QuestionShell>
+                  </QuestionShell>}
                   <QuestionShell id="Q7" num={nums.Q7} title={Q.Q7.text} error={errors.Q7}
                     hint={suggestion && !answers.Q7 ? "بناءً على إجاباتك، ميّزنا لك المسار الأقرب. أكّد اختيارك بالضغط عليه." : "اختيارك هنا يحدد الأسئلة التالية."}>
                     <div className="grid gap-3 sm:grid-cols-2">

@@ -19,8 +19,8 @@ export function suggestPath(a: Answers): Path | undefined {
   return undefined;
 }
 
-export function questionNumbers(path?: Path): Record<string, number> {
-  const order = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7",
+export function questionNumbers(path?: Path, sector?: string): Record<string, number> {
+  const order = ["Q1", "Q2", "Q3", "Q4", "Q5", ...(sector === "not_working" ? [] : ["Q6"]), "Q7",
     ...(path === "B2C" ? ["Q15", "Q18"] : ["Q8", "Q9", "Q10", "Q14"]),
     "Q19", "Q20", "Q21", "Q22", "Q24", "Q25G", "Q25", "Q26"];
   return Object.fromEntries(order.map((id, i) => [id, i + 1]));
@@ -55,6 +55,7 @@ export function pruneCourseAnswers(q25: Answers["Q25"], groupIds: string[]): Ans
 export const defaultTrackOrder = () => TRACKS.map((t) => t.id);
 
 export const ownerAllowed = (a: Answers) => !["private", "government"].includes(a.Q5?.sector ?? "");
+export const jobLevelRequired = (a: Answers) => a.Q5?.sector !== "not_working";
 export const validTrackOrder = (v: unknown): v is string[] =>
   Array.isArray(v) && v.length === TRACKS.length && new Set(v).size === TRACKS.length &&
   TRACKS.every((t) => v.includes(t.id));
@@ -68,7 +69,7 @@ export function normalizeDraft(raw: Record<string, unknown>): Answers {
   }
   delete a.Q11;
   delete a.Q23;
-  if (!ownerAllowed(a) && a.Q6 === "owner") delete a.Q6;
+  if (!jobLevelRequired(a) || (!ownerAllowed(a) && a.Q6 === "owner")) delete a.Q6;
   if (!validTrackOrder(a.Q24)) delete a.Q24;
   return a;
 }
@@ -77,7 +78,8 @@ const REQ = "يرجى اختيار إجابة للمتابعة";
 export function validateStep(step: number, a: Answers): Record<string, string> {
   const e: Record<string, string> = {};
   if (step === STEP_S1) {
-    (["Q1", "Q2", "Q3", "Q4", "Q6"] as const).forEach((k) => { if (!a[k]) e[k] = REQ; });
+    (["Q1", "Q2", "Q3", "Q4"] as const).forEach((k) => { if (!a[k]) e[k] = REQ; });
+    if (jobLevelRequired(a) && !a.Q6) e.Q6 = REQ;
     const q5 = a.Q5;
     if (!q5?.sector) e.Q5 = REQ;
     else if ((q5.sector === "private" || q5.sector === "government") && !q5.sub) e.Q5 = "يرجى تحديد المجال من القائمة الفرعية";
