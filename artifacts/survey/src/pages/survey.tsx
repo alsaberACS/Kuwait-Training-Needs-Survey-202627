@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Lock, Clock, ShieldCheck, ArrowRight, Loader2, WifiOff, RefreshCw, Sparkles, Copy, Check, Building2, UserRound, Bookmark, Phone, Mail, User } from "lucide-react";
 import {
   useCreateResponse, useGetResponse, getGetResponseQueryKey, useUpdateResponse, useCompleteResponse,
@@ -12,12 +12,15 @@ import {
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, b2bAllowed, normalizeDraft,
+    orderedCourseGroups, selectedCourseGroups, pruneCourseAnswers, defaultTrackOrder, validTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, b2bAllowed, normalizeDraft,
 } from "@/lib/survey-logic";
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
 } from "@/components/survey/controls";
 import { SurveyNavigationContext, focusSurveyTarget } from "@/components/survey/navigation";
+import { PersonalizedResults } from "@/components/survey/personalized-results";
+import { surveyProgress } from "@/lib/survey-progress";
+import { useDraftAutosave, type SaveStatus } from "@/hooks/use-draft-autosave";
 
 const LS_KEY = "kw-tna-response-id";
 const LS_START = "kw-tna-started";
@@ -40,23 +43,36 @@ function Brand({ light }: { light?: boolean }) {
   );
 }
 
-function Progress({ step, path, saving }: { step: number; path?: Path; saving: boolean }) {
-  const labels = PROGRESS_LABELS(path);
+function Progress({ step, answers, status, submitted, submitting, savingContact, lastSavedAt }: {
+  step: number; answers: Answers; status: SaveStatus; submitted: boolean; submitting: boolean; savingContact: boolean; lastSavedAt: Date | null;
+}) {
+  const labels = PROGRESS_LABELS(answers.Q7);
   const idx = step - 1;
-  const pct = Math.min(100, ((idx + 0.5) / labels.length) * 100);
+  const progress = surveyProgress(answers, submitted);
+  const reducedMotion = useReducedMotion();
+  const saving = submitting || savingContact || (!submitted && status === "saving");
+  const message = submitting ? "جارٍ إرسال الاستبانة" : savingContact ? "جارٍ حفظ بيانات التواصل" : submitted ? "الاستبانة مُرسلة" :
+    status === "saving" ? "جارٍ حفظ الإجابات" : status === "dirty" ? "تغييرات لم تُحفظ بعد" :
+    status === "error" ? "تعذّر الحفظ" : "حُفظت الإجابات";
   return (
     <div className="sticky top-0 z-30 border-b border-border/70 bg-background/85 backdrop-blur-md">
       <div className="mx-auto max-w-3xl px-4 py-3">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-semibold text-primary">{labels[idx]}</span>
-          <span className="flex items-center gap-1.5 text-muted-foreground" data-testid="status-autosave">
-            {saving ? <><Loader2 className="h-3 w-3 animate-spin" /> جارٍ الحفظ</> : <><Check className="h-3 w-3 text-[hsl(var(--teal))]" /> محفوظ تلقائياً</>}
+          <span className="font-semibold text-primary">{submitted ? "اكتملت الاستبانة · التواصل اختياري" : labels[idx]}</span>
+          <span className="flex items-center gap-1.5 text-muted-foreground" data-testid="status-autosave" role="status"
+            title={!submitted && status === "saved" && lastSavedAt ? `آخر حفظ: ${lastSavedAt.toLocaleTimeString("ar-KW")}` : undefined}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : submitted || status === "saved" ? <Check className="h-3 w-3 text-[hsl(var(--teal))]" /> : status === "error" ? <WifiOff className="h-3 w-3 text-destructive" /> : <Clock className="h-3 w-3" />}
+            {message}
           </span>
         </div>
-        <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="تقدم الإجابات المطلوبة"
+          aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent} data-testid="progress-required">
           <motion.div className="absolute inset-y-0 start-0 rounded-full bg-gradient-to-l from-accent to-[hsl(var(--teal))]"
-            initial={false} animate={{ width: `${pct}%` }} transition={{ type: "spring", stiffness: 90, damping: 18 }} />
+            initial={false} animate={{ width: `${progress.percent}%` }} transition={{ duration: reducedMotion ? 0 : 0.25 }} />
         </div>
+        <p className="mt-1.5 text-xs text-muted-foreground" data-testid="text-required-progress">
+          {submitted ? "حُفظت جميع الإجابات المطلوبة · ١٠٠٪" : `${progress.completed.toLocaleString("ar-KW")} من ${progress.total.toLocaleString("ar-KW")} سؤالاً مطلوباً مكتملاً · ${progress.percent.toLocaleString("ar-KW")}٪`}
+        </p>
         <ol className="mt-2 hidden grid-cols-4 gap-2 sm:grid">
           {labels.map((l, i) => (
             <li key={l} className={cn("flex items-center gap-1.5 text-[11px]", i <= idx ? "text-foreground" : "text-muted-foreground/70")}>
@@ -98,6 +114,8 @@ export default function SurveyPage() {
   const [netError, setNetError] = useState<null | (() => void)>(null);
   const [done, setDone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [navigating, setNavigating] = useState(false);
+  const navigationLock = useRef(false);
   const [resumeHandled, setResumeHandled] = useState(false);
   const [advanceRequest, setAdvanceRequest] = useState<{ questionId: string; targetId?: string; step: number } | null>(null);
   const requestAdvance = (questionId: string, targetId?: string) => setAdvanceRequest({ questionId, targetId, step });
@@ -106,6 +124,15 @@ export default function SurveyPage() {
   const updateM = useUpdateResponse();
   const completeM = useCompleteResponse();
   const queryClient = useQueryClient();
+  const draftSnapshot = useMemo(() => ({
+    answers: answers as Record<string, unknown>, path: answers.Q7, currentStep: step, consent: true,
+  }), [answers, step]);
+  const draftSave = useDraftAutosave({
+    id: responseId,
+    snapshot: draftSnapshot,
+    enabled: !!responseId && step >= STEP_S1 && step < STEP_S5 && !submitted && !done,
+    onSaved: (response) => queryClient.setQueryData(getGetResponseQueryKey(response.id), response),
+  });
 
   const resumeQ = useGetResponse(storedId ?? "", {
     query: { enabled: !!storedId && !resumeHandled, queryKey: getGetResponseQueryKey(storedId ?? ""), retry: 1 },
@@ -138,7 +165,7 @@ export default function SurveyPage() {
     if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
     // Older drafts may have reached contact without being submitted.
     const requestedStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S4);
-    setStep(!resumed.Q7 || (jobLevelRequired(resumed) && !resumed.Q6) ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
+    setStep(!resumed.Q7 || (jobLevelRequired(resumed) && !resumed.Q6) ? STEP_S1 : requestedStep);
     setResumeHandled(true);
   };
   const startFresh = () => {
@@ -166,15 +193,13 @@ export default function SurveyPage() {
   const nums = useMemo(() => questionNumbers(path, answers.Q5?.sector), [path, answers.Q5?.sector]);
   const suggestion = suggestPath(answers);
   const groups = useMemo(() => orderedCourseGroups(answers), [answers.Q7, answers.Q5?.sector, answers.Q6]); // eslint-disable-line react-hooks/exhaustive-deps
-  const suggested = suggestedGroups(answers);
   const groupOptions = useMemo(
     () => groups.map((g) => ({
       id: g.id,
       label: g.label,
       description: `${g.courses.length} دورات`,
-      suggested: suggested.includes(g.id),
     })),
-    [groups, suggested.join()], // eslint-disable-line react-hooks/exhaustive-deps
+    [groups],
   );
   const chosenGroups = selectedCourseGroups(answers);
   const chosenCourseCount = chosenGroups.reduce((n, g) => n + g.courses.length, 0);
@@ -194,11 +219,13 @@ export default function SurveyPage() {
     setNetError(null);
     try {
       const src = new URLSearchParams(window.location.search).get("src") ?? undefined;
-      const r = await createM.mutateAsync({ data: { device: detectDevice(), sourceTag: src } });
-      localStorage.setItem(LS_KEY, r.id);
-      localStorage.setItem(LS_START, String(Date.now()));
-      setResponseId(r.id);
-      await updateM.mutateAsync({ id: r.id, data: { consent: true, currentStep: STEP_S1 } }).catch(() => undefined);
+      const r = responseId ? { id: responseId } : await createM.mutateAsync({ data: { device: detectDevice(), sourceTag: src } });
+      if (!responseId) {
+        localStorage.setItem(LS_KEY, r.id);
+        localStorage.setItem(LS_START, String(Date.now()));
+        setResponseId(r.id);
+      }
+      await updateM.mutateAsync({ id: r.id, data: { consent: true, currentStep: STEP_S1 } });
       setStep(STEP_S1);
     } catch {
       setNetError(() => begin);
@@ -206,14 +233,11 @@ export default function SurveyPage() {
   };
 
   const save = async (nextStep: number) => {
-    if (!responseId) return;
-    await updateM.mutateAsync({
-      id: responseId,
-      data: { answers: answers as Record<string, unknown>, path: answers.Q7, currentStep: nextStep, consent: true },
-    });
+    await draftSave.saveNow(nextStep);
   };
 
   const next = async () => {
+    if (navigationLock.current || submitted) return;
     setAdvanceRequest(null);
     const stages = step === STEP_S4 ? [STEP_S1, STEP_PATH, STEP_S4] : [step];
     const invalid = stages.map((s) => ({ step: s, errors: validateStep(s, answers) }))
@@ -228,15 +252,19 @@ export default function SurveyPage() {
       return;
     }
     setNetError(null);
+    navigationLock.current = true;
+    setNavigating(true);
     try {
       if (step === STEP_S4) {
         if (!responseId || !answers.Q7) return;
         const started = Number(localStorage.getItem(LS_START) ?? Date.now());
+        await draftSave.saveNow();
         const completed = await completeM.mutateAsync({
           id: responseId,
           data: { path: answers.Q7, answers: answers as Record<string, unknown>, durationSec: Math.max(0, Math.round((Date.now() - started) / 1000)) },
         });
         queryClient.setQueryData(getGetResponseQueryKey(responseId), completed);
+        setAnswers((completed.answers ?? {}) as Answers);
         setSubmitted(true);
       } else {
         await save(step + 1);
@@ -244,6 +272,9 @@ export default function SurveyPage() {
       setStep(step + 1);
     } catch {
       setNetError(() => next);
+    } finally {
+      navigationLock.current = false;
+      setNavigating(false);
     }
   };
 
@@ -285,7 +316,7 @@ export default function SurveyPage() {
   };
 
   const back = () => { setAdvanceRequest(null); setErrors({}); setNetError(null); setStep((s) => Math.max(STEP_S1, s - 1)); };
-  const busy = createM.isPending || updateM.isPending || completeM.isPending;
+  const busy = createM.isPending || updateM.isPending || completeM.isPending || navigating;
 
   useEffect(() => {
     if (!advanceRequest || busy || done || advanceRequest.step !== step) return;
@@ -306,7 +337,7 @@ export default function SurveyPage() {
     return () => window.clearTimeout(timer);
   }, [advanceRequest, answers, busy, step, done]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (done) return <ThankYou />;
+  if (done) return <ThankYou answers={answers} />;
   if (checkingResume) return <ResumeSkeleton />;
   if (showResume) return <ResumePrompt step={resumeQ.data?.currentStep ?? 1} path={resumeQ.data?.path ?? undefined} onResume={doResume} onFresh={startFresh} />;
   if (step === STEP_INTRO)
@@ -320,8 +351,8 @@ export default function SurveyPage() {
   return (
     <SurveyNavigationContext.Provider value={requestAdvance}>
     <div className="min-h-[100dvh] paper-bg grain">
-      <Progress step={step} path={path} saving={updateM.isPending || completeM.isPending} />
-      <main className="mx-auto max-w-3xl px-4 pb-40">
+      <Progress step={step} answers={answers} status={draftSave.status} submitted={submitted} submitting={completeM.isPending} savingContact={submitted && updateM.isPending} lastSavedAt={draftSave.lastSavedAt} />
+      <main className="mx-auto max-w-3xl px-4 pb-40" inert={navigating || completeM.isPending}>
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.3 }}>
             {step === STEP_S1 && (
@@ -505,14 +536,15 @@ export default function SurveyPage() {
 
             {step === STEP_S5 && (
               <>
-                <SectionHead kicker="04" title={SECTION_TITLES.s5} note={CONTACT_INTRO} />
-                <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[hsl(var(--teal)/.35)] bg-secondary/60 p-5" role="status" data-testid="status-survey-submitted">
+                <div className="mb-5 mt-8 flex items-start gap-3 rounded-2xl border border-[hsl(var(--teal)/.35)] bg-secondary/60 p-5" role="status" data-testid="status-survey-submitted">
                   <ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-[hsl(var(--teal))]" />
                   <div>
                     <p className="font-semibold text-primary">تم إرسال إجابات الاستبانة بنجاح</p>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">بيانات التواصل اختيارية. يمكنك إضافتها الآن أو إنهاء المشاركة أو إغلاق الصفحة؛ إجاباتك مُرسلة ومحفوظة بالفعل.</p>
                   </div>
                 </div>
+                <PersonalizedResults answers={answers} />
+                <SectionHead kicker="04" title={SECTION_TITLES.s5} note={CONTACT_INTRO} />
                 {booked.length > 0 ? (
                   <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="relative mb-5 overflow-hidden rounded-2xl ink-panel p-6" data-testid="card-booked">
                     <div className="absolute -end-10 -top-10 h-40 w-40 sadu opacity-10 rotate-12" />
@@ -542,7 +574,18 @@ export default function SurveyPage() {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
-        <AnimatePresence>
+          <AnimatePresence>
+            {!submitted && draftSave.status === "error" && !netError && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} role="alert"
+                className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
+                data-testid="alert-autosave">
+                <WifiOff className="h-5 w-5 shrink-0 text-destructive" />
+                <span className="flex-1">تعذّر حفظ آخر تغييراتك. لا تغلق الصفحة حتى يكتمل الحفظ.</span>
+                <button type="button" onClick={() => { void draftSave.saveNow().catch(() => undefined); }}
+                  className="flex min-h-11 items-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 font-semibold"
+                  data-testid="button-retry-save"><RefreshCw className="h-4 w-4" /> إعادة الحفظ</button>
+              </motion.div>
+            )}
           {netError && (
             <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden bg-destructive text-destructive-foreground">
               <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2.5 text-sm" data-testid="status-network-error">
@@ -694,7 +737,7 @@ function ResumePrompt({ step, path, onResume, onFresh }: { step: number; path?: 
   );
 }
 
-function ThankYou() {
+function ThankYou({ answers }: { answers: Answers }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   const copy = async () => {
@@ -710,7 +753,7 @@ function ThankYou() {
       <div className="absolute inset-x-0 bottom-0 h-3 sadu opacity-80" />
       <div className="absolute -end-32 -top-32 h-96 w-96 rounded-full bg-accent/20 blur-3xl" />
       <div className="absolute -start-32 bottom-0 h-96 w-96 rounded-full bg-[hsl(var(--teal)/.3)] blur-3xl" />
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="relative max-w-xl text-center">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="relative w-full max-w-3xl text-center">
         <motion.div initial={{ scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.2, type: "spring", stiffness: 160, damping: 12 }}
           className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-accent text-accent-foreground shadow-2xl shadow-accent/30">
           <Check className="h-10 w-10" strokeWidth={2.5} />
@@ -719,6 +762,9 @@ function ThankYou() {
           {THANK_YOU_TEXT}
         </motion.p>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-6 font-display text-accent">— {THANK_YOU_SIGN}</motion.p>
+        <div className="mt-8 rounded-2xl bg-background p-4 text-start text-foreground sm:p-6">
+          <PersonalizedResults answers={answers} />
+        </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }} className="mt-10 rounded-2xl border border-white/10 bg-white/[.05] p-5">
           <p className="text-sm text-white/75">صوت زملائك يصنع الفرق أيضاً. شارك الاستبانة معهم.</p>
           <button onClick={copy} className="mx-auto mt-3 flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-semibold text-primary transition-transform active:scale-95" data-testid="button-copy-link">

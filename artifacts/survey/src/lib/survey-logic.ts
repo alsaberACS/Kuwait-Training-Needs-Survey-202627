@@ -26,20 +26,16 @@ export function questionNumbers(path?: Path, sector?: string): Record<string, nu
   return Object.fromEntries(order.map((id, i) => [id, i + 1]));
 }
 
-/** Groups the respondent's profile points to; shown first and badged as suggested. */
-export function suggestedGroups(a: Answers): string[] {
-  if (a.Q7 === "B2B") return ["G2"];
-  if (a.Q5?.sector === "not_working" || a.Q6 === "student") return ["G6"];
+/** Keep selection neutral; recommendations are offered only after submission. */
+export function suggestedGroups(_a: Answers): string[] {
   return [];
 }
 
-export function orderedCourseGroups(a: Answers): CourseGroup[] {
-  const first = suggestedGroups(a);
-  const rest = COURSE_GROUPS.filter((g) => !first.includes(g.id));
-  return [...COURSE_GROUPS.filter((g) => first.includes(g.id)), ...rest];
+export function orderedCourseGroups(_a: Answers): CourseGroup[] {
+  return COURSE_GROUPS;
 }
 
-/** Only the groups picked in Q25G, in smart order — the course matrix shows nothing else. */
+/** Only the groups picked in Q25G, in the same neutral order for all participants. */
 export const selectedCourseGroups = (a: Answers): CourseGroup[] =>
   orderedCourseGroups(a).filter((g) => a.Q25G?.includes(g.id));
 

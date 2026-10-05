@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from "react";
-import { motion, Reorder, useDragControls, AnimatePresence } from "framer-motion";
-import { Check, ChevronUp, ChevronDown, GripVertical, Info, ChevronLeft } from "lucide-react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { motion, Reorder, useDragControls, AnimatePresence, useReducedMotion } from "framer-motion";
+import { Check, ChevronUp, ChevronDown, GripVertical, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Option, Rating, Skill, Track, CourseGroup } from "@/lib/survey-definition";
 import { LEVEL_LABELS } from "@/lib/survey-definition";
-import { useSurveyAdvance } from "./navigation";
+import { useSurveyAdvance, focusSurveyTarget } from "./navigation";
+import { SKILL_EXPLANATIONS, COURSE_DESCRIPTIONS, COURSE_NOTE } from "@/lib/survey-content";
 
 export function QuestionShell({
   num, title, hint, error, children, id, aside,
@@ -162,28 +163,55 @@ export function MultiChoice({
   );
 }
 
-function Scale({ value, onChange, testId, tone }: { value?: number; onChange: (n: number) => void; testId: string; tone: "ink" | "gold" }) {
+const ar = (n: number) => n.toLocaleString("ar-EG");
+const IMP_LEVELS = ["غير مهمة", "قليلة الأهمية", "متوسطة الأهمية", "مهمة", "مهمة جداً"];
+const PERF_LEVELS = ["ضعيف", "دون المتوسط", "متوسط", "جيد", "ممتاز"];
+
+function Scale({ value, onChange, testId, tone, title, levels }: {
+  value?: number; onChange: (n: number) => void; testId: string; tone: "ink" | "gold"; title: string; levels: string[];
+}) {
   return (
-    <div className="grid grid-cols-5 gap-1.5" dir="ltr">
-      {[1, 2, 3, 4, 5].map((n) => {
-        const on = value === n;
-        return (
-          <motion.button
-            key={n} type="button" whileTap={{ scale: 0.9 }} onClick={() => onChange(n)} data-testid={`${testId}-${n}`}
-            aria-pressed={on}
-            className={cn(
-              "h-11 rounded-lg border text-base font-semibold tabular-nums transition-all",
-              on
-                ? tone === "ink" ? "border-primary bg-primary text-primary-foreground" : "border-accent bg-accent text-accent-foreground"
-                : "border-border bg-background hover:border-primary/40",
-            )}
-          >
-            {n}
-          </motion.button>
-        );
-      })}
+    <div role="group" aria-label={title}>
+      <p className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
+        <span className="font-medium text-foreground">{title}</span>
+        <span aria-live="polite" className="tabular-nums">{value ? `${ar(value)} — ${levels[value - 1]}` : "لم يُحدد بعد"}</span>
+      </p>
+      <div className="grid grid-cols-5 gap-1.5" dir="ltr">
+        {[1, 2, 3, 4, 5].map((n) => {
+          const on = value === n;
+          return (
+            <motion.button
+              key={n} type="button" whileTap={{ scale: 0.94 }} onClick={() => onChange(n)} data-testid={`${testId}-${n}`}
+              aria-pressed={on} aria-label={`${title}: ${ar(n)} — ${levels[n - 1]}`}
+              className={cn(
+                "h-11 rounded-lg border text-base font-semibold tabular-nums transition-colors",
+                on
+                  ? tone === "ink" ? "border-primary bg-primary text-primary-foreground" : "border-accent bg-accent text-accent-foreground"
+                  : "border-border bg-background hover:border-primary/40",
+              )}
+            >
+              {ar(n)}
+            </motion.button>
+          );
+        })}
+      </div>
+      <p className="mt-1 flex justify-between text-[11px] leading-tight text-muted-foreground" dir="ltr" aria-hidden>
+        <span>١ {levels[0]}</span><span>٥ {levels[4]}</span>
+      </p>
     </div>
   );
+}
+
+function useIsMobile() {
+  const q = "(max-width: 639px)";
+  const [m, setM] = useState(() => typeof window !== "undefined" && window.matchMedia(q).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(q);
+    const h = () => setM(mq.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
+  return m;
 }
 
 export function SkillMatrix({
@@ -193,38 +221,118 @@ export function SkillMatrix({
   impLabel: string; perfLabel: string; showMissing?: boolean;
 }) {
   const advance = useSurveyAdvance();
+  const isMobile = useIsMobile();
+  const isDone = (sid: string, v = value) => !!(v[sid]?.importance && v[sid]?.performance);
+  const firstIncomplete = () => Math.max(0, skills.findIndex((s) => !isDone(s.id)));
+  const [active, setActive] = useState(firstIncomplete);
+  const [prevMissing, setPrevMissing] = useState(!!showMissing);
+  const [prevMobile, setPrevMobile] = useState(isMobile);
+  if (showMissing !== prevMissing) {
+    setPrevMissing(!!showMissing);
+    if (showMissing) setActive(firstIncomplete());
+  }
+  if (isMobile !== prevMobile) {
+    setPrevMobile(isMobile);
+    if (isMobile) setActive(firstIncomplete());
+  }
+  const cardRef = useRef<HTMLDivElement>(null);
+  const shouldFocus = useRef(false);
+  useEffect(() => {
+    if (shouldFocus.current && cardRef.current) focusSurveyTarget(cardRef.current);
+    shouldFocus.current = false;
+  }, [active]);
+  const go = (i: number) => {
+    if (i < 0 || i >= skills.length || i === active) return;
+    shouldFocus.current = true;
+    setActive(i);
+  };
+
   const set = (sid: string, key: keyof Rating, n: number) => {
     const rating = { ...value[sid], [key]: n };
-    onChange({ ...value, [sid]: rating });
-    if (rating.importance && rating.performance) {
-      const following = skills[skills.findIndex((s) => s.id === sid) + 1];
-      advance(qid, following ? `skill-${qid}-${following.id}` : undefined);
-    }
+    const next = { ...value, [sid]: rating };
+    onChange(next);
+    if (!(rating.importance && rating.performance) || isDone(sid)) return; // only on first completion
+    const idx = skills.findIndex((s) => s.id === sid);
+    const order = [...skills.slice(idx + 1), ...skills.slice(0, idx)];
+    const target = order.find((s) => !isDone(s.id, next));
+    if (!target) return advance(qid);
+    if (isMobile) go(skills.findIndex((s) => s.id === target.id));
+    else advance(qid, `skill-${qid}-${target.id}`);
   };
-  const done = skills.filter((s) => value[s.id]?.importance && value[s.id]?.performance).length;
+  const done = skills.filter((s) => isDone(s.id)).length;
+
+  const legend = (
+    <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-muted/60 p-3 text-sm">
+      <span className="flex items-start gap-2"><span className="mt-1 h-3 w-3 shrink-0 rounded-sm bg-primary" />{impLabel}</span>
+      <span className="flex items-start gap-2"><span className="mt-1 h-3 w-3 shrink-0 rounded-sm bg-accent" />{perfLabel}</span>
+      <span className="ms-auto font-medium tabular-nums" data-testid={`skill-progress-${qid}`}>{ar(done)}/{ar(skills.length)}</span>
+    </div>
+  );
+
+  if (isMobile) {
+    const s = skills[active];
+    const r = value[s.id] ?? {};
+    const complete = isDone(s.id);
+    return (
+      <div>
+        {legend}
+        <p className="mb-2 text-sm font-semibold text-primary tabular-nums" aria-live="polite" data-testid={`skill-step-${qid}`}>
+          المهارة {ar(active + 1)} من {ar(skills.length)}
+        </p>
+        <div className="mb-3 flex gap-1" role="group" aria-label="التنقل بين المهارات">
+          {skills.map((k, i) => (
+            <button key={k.id} type="button" onClick={() => go(i)} aria-label={`المهارة ${ar(i + 1)}${isDone(k.id) ? "، مكتملة" : ""}`}
+              aria-current={i === active} data-testid={`skill-jump-${qid}-${k.id}`}
+              className="flex h-8 flex-1 items-center justify-center">
+              <span className={cn("h-2 w-full rounded-full transition-colors",
+                i === active ? "bg-primary" : isDone(k.id) ? "bg-[hsl(var(--teal))]" : showMissing ? "bg-destructive/40" : "bg-muted-foreground/25")} />
+            </button>
+          ))}
+        </div>
+        <div key={s.id} ref={cardRef} id={`skill-${qid}-${s.id}`} tabIndex={-1} data-testid={`skill-${qid}-${s.id}`}
+          className={cn("scroll-mt-24 rounded-xl border p-4 motion-safe:animate-in motion-safe:fade-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
+            complete ? "border-[hsl(var(--teal)/.4)] bg-secondary/40" : showMissing ? "border-destructive/40" : "border-border bg-background/50")}>
+          <p className="flex gap-2 font-semibold leading-relaxed">
+            {s.label}
+            {complete && <Check className="ms-auto h-4 w-4 shrink-0 text-[hsl(var(--teal))]" />}
+          </p>
+          {SKILL_EXPLANATIONS[s.id] && <p className="mb-4 mt-1 text-sm leading-relaxed text-muted-foreground">{SKILL_EXPLANATIONS[s.id]}</p>}
+          <Scale title="الأهمية" levels={IMP_LEVELS} tone="ink" value={r.importance} onChange={(n) => set(s.id, "importance", n)} testId={`rate-${qid}-${s.id}-imp`} />
+          <div className="h-4" />
+          <Scale title="الأداء الحالي" levels={PERF_LEVELS} tone="gold" value={r.performance} onChange={(n) => set(s.id, "performance", n)} testId={`rate-${qid}-${s.id}-perf`} />
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button type="button" disabled={active === 0} onClick={() => go(active - 1)} data-testid={`skill-prev-${qid}`}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-border px-3 text-sm font-semibold disabled:opacity-40">
+            <ChevronRight className="h-4 w-4" /> السابقة
+          </button>
+          <button type="button" disabled={active === skills.length - 1} onClick={() => go(active + 1)} data-testid={`skill-next-${qid}`}
+            className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-primary/30 px-3 text-sm font-semibold text-primary disabled:opacity-40">
+            التالية <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-muted/60 p-3 text-sm">
-        <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-primary" />{impLabel}</span>
-        <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-sm bg-accent" />{perfLabel}</span>
-        <span className="ms-auto font-medium tabular-nums">{done}/{skills.length}</span>
-      </div>
+      {legend}
       <div className={cn("grid gap-3", qid !== "Q14" && "lg:grid-cols-2")}>
         {skills.map((s, i) => {
           const r = value[s.id] ?? {};
-          const complete = !!(r.importance && r.performance);
+          const complete = isDone(s.id);
           return (
             <div key={s.id} id={`skill-${qid}-${s.id}`} tabIndex={-1} data-testid={`skill-${qid}-${s.id}`}
               className={cn("scroll-mt-24 rounded-xl border p-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
                 complete ? "border-[hsl(var(--teal)/.4)] bg-secondary/40" : showMissing ? "border-destructive/40" : "border-border bg-background/50")}>
               <p className="mb-3 flex gap-2 font-medium leading-relaxed">
-                <span className="text-muted-foreground tabular-nums">{i + 1}.</span>{s.label}
+                <span className="text-muted-foreground tabular-nums">{ar(i + 1)}.</span>{s.label}
                 {complete && <Check className="ms-auto h-4 w-4 shrink-0 text-[hsl(var(--teal))]" />}
               </p>
-              <p className="mb-1.5 text-xs text-muted-foreground">الأهمية</p>
-              <Scale tone="ink" value={r.importance} onChange={(n) => set(s.id, "importance", n)} testId={`rate-${qid}-${s.id}-imp`} />
-              <p className="mb-1.5 mt-3 text-xs text-muted-foreground">الأداء الحالي</p>
-              <Scale tone="gold" value={r.performance} onChange={(n) => set(s.id, "performance", n)} testId={`rate-${qid}-${s.id}-perf`} />
+              <Scale title="الأهمية" levels={IMP_LEVELS} tone="ink" value={r.importance} onChange={(n) => set(s.id, "importance", n)} testId={`rate-${qid}-${s.id}-imp`} />
+              <div className="h-3" />
+              <Scale title="الأداء الحالي" levels={PERF_LEVELS} tone="gold" value={r.performance} onChange={(n) => set(s.id, "performance", n)} testId={`rate-${qid}-${s.id}-perf`} />
             </div>
           );
         })}
@@ -290,6 +398,44 @@ export function RankList({ tracks, value, onChange }: { tracks: Track[]; value: 
   );
 }
 
+function CourseCard({ c, v, showMissing, onPick }: { c: { id: string; label: string }; v: 0 | 1 | 2 | undefined; showMissing?: boolean; onPick: (i: 0 | 1 | 2) => void }) {
+  const [open, setOpen] = useState(false);
+  const reduce = useReducedMotion();
+  const levelStyle = ["border-muted-foreground/40 bg-muted text-foreground", "border-[hsl(var(--teal))] bg-[hsl(var(--teal))] text-white", "border-accent bg-accent text-accent-foreground"];
+  return (
+    <div id={`course-${c.id}`} tabIndex={-1} data-testid={`course-${c.id}`}
+      className={cn("scroll-mt-24 p-3.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary", showMissing && v === undefined && "bg-destructive/5")}>
+      <div className="flex items-start gap-2">
+        <p className="flex-1 text-[15px] leading-relaxed">{c.label}</p>
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={`course-desc-${c.id}`}
+          data-testid={`course-${c.id}-toggle`}
+          className="flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary hover:bg-primary/5">
+          ماذا ستتعلم <ChevronDown className={cn("h-4 w-4 transition-transform motion-reduce:transition-none", open && "rotate-180")} />
+        </button>
+      </div>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div id={`course-desc-${c.id}`} key="d" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: reduce ? 0 : 0.18 }} className="mb-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm leading-relaxed">
+            <p data-testid={`course-${c.id}-description`}>{COURSE_DESCRIPTIONS[c.id]}</p>
+            <p className="mt-1.5 text-xs text-muted-foreground">{COURSE_NOTE}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="mt-2 grid grid-cols-3 gap-1.5" role="group" aria-label={c.label}>
+        {LEVEL_LABELS.map((l, i) => (
+          <motion.button key={l} type="button" whileTap={{ scale: 0.96 }} onClick={() => onPick(i as 0 | 1 | 2)}
+            aria-pressed={v === i} data-testid={`course-${c.id}-${i}`}
+            className={cn("min-h-[44px] rounded-lg border px-1.5 text-xs font-medium leading-tight transition-colors sm:text-[13px]",
+              v === i ? levelStyle[i] : "border-border bg-background hover:border-primary/40")}>
+            {l}
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CourseMatrix({
   groups, value = {}, onChange, showMissing,
 }: { groups: CourseGroup[]; value?: Record<string, 0 | 1 | 2>; onChange: (v: Record<string, 0 | 1 | 2>) => void; showMissing?: boolean }) {
@@ -305,46 +451,28 @@ export function CourseMatrix({
       </div>
       <AnimatePresence initial={false}>
         {groups.map((g, gi) => {
-        const answered = g.courses.filter((c) => value[c.id] !== undefined).length;
-        return (
-          <motion.div key={g.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden rounded-xl border border-border" data-testid={`course-group-${g.id}`}>
-            <div className="flex flex-wrap items-center gap-2 bg-muted/60 px-4 py-3">
-              <span className="font-display text-xs font-semibold text-accent tabular-nums">0{gi + 1}</span>
-              <h4 className="flex-1 font-semibold">{g.label}</h4>
-              <span className={cn("rounded-full px-2 py-0.5 text-xs tabular-nums", answered === g.courses.length ? "bg-[hsl(var(--teal))]/15 text-[hsl(var(--teal))] font-semibold" : "text-muted-foreground")}>
-                {answered}/{g.courses.length}
-              </span>
-            </div>
-            <div className="divide-y divide-border">
-              {g.courses.map((c) => {
-                const v = value[c.id];
-                return (
-                  <div key={c.id} id={`course-${c.id}`} tabIndex={-1} className={cn("scroll-mt-24 p-3.5 sm:flex sm:items-center sm:gap-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary", showMissing && v === undefined && "bg-destructive/5")} data-testid={`course-${c.id}`}>
-                    <p className="mb-2.5 flex-1 text-[15px] leading-relaxed sm:mb-0">{c.label}</p>
-                    <div className="grid grid-cols-3 gap-1.5 sm:w-[360px]">
-                      {LEVEL_LABELS.map((l, i) => (
-                        <motion.button
-                          key={l} type="button" whileTap={{ scale: 0.95 }}
-                          onClick={() => {
-                            onChange({ ...value, [c.id]: i as 0 | 1 | 2 });
-                            const following = courses[courses.findIndex((course) => course.id === c.id) + 1];
-                            advance("Q25", following ? `course-${following.id}` : undefined);
-                          }}
-                          aria-pressed={v === i} data-testid={`course-${c.id}-${i}`}
-                          className={cn("min-h-[44px] rounded-lg border px-1.5 text-xs font-medium leading-tight transition-all sm:text-[13px]",
-                            v === i ? levelStyle[i] : "border-border bg-background hover:border-primary/40")}
-                        >
-                          {l}
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        );
-      })}
+          const answered = g.courses.filter((c) => value[c.id] !== undefined).length;
+          return (
+            <motion.div key={g.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden rounded-xl border border-border" data-testid={`course-group-${g.id}`}>
+              <div className="flex flex-wrap items-center gap-2 bg-muted/60 px-4 py-3">
+                <span className="font-display text-xs font-semibold text-accent tabular-nums">0{gi + 1}</span>
+                <h4 className="flex-1 font-semibold">{g.label}</h4>
+                <span className={cn("rounded-full px-2 py-0.5 text-xs tabular-nums", answered === g.courses.length ? "bg-[hsl(var(--teal))]/15 text-[hsl(var(--teal))] font-semibold" : "text-muted-foreground")}>
+                  {answered}/{g.courses.length}
+                </span>
+              </div>
+              <div className="divide-y divide-border">
+                {g.courses.map((c) => (
+                  <CourseCard key={c.id} c={c} v={value[c.id]} showMissing={showMissing} onPick={(i) => {
+                    onChange({ ...value, [c.id]: i });
+                    const following = courses[courses.findIndex((course) => course.id === c.id) + 1];
+                    advance("Q25", following ? `course-${following.id}` : undefined);
+                  }} />
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );
