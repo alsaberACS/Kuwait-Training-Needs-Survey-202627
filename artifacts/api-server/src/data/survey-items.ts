@@ -105,7 +105,7 @@ export const LEGACY_TRACKS: Record<string, string> = {
   T6: "التحكيم التجاري وعقود الاستثمار",
 };
 
-export const TRACKS: Record<string, string> = {
+export const REPORT_TRACKS: Record<string, string> = {
   R1: "المهارات الشخصية",
   R2: "الذكاء الاصطناعي والأمن السيبراني",
   R3: "تحليلات الأعمال وتحليل البيانات",
@@ -114,6 +114,8 @@ export const TRACKS: Record<string, string> = {
   R6: "المالية",
   R7: "الجاهزية المهنية والتوظيف",
 };
+
+export const TRACKS = COURSE_GROUPS;
 
 export const QUESTION_LABELS: Record<string, string> = {
   Q1: "الجنسية", Q2: "الجنس", Q3: "الفئة العمرية", Q4: "المستوى التعليمي",
@@ -225,3 +227,12 @@ export const ITEM_WORKSHOPS: Record<string, string[]> = {
   R6: ["Advanced Financial Analysis and Budgeting", "Finance for Non-Financial Managers and IFRS Reporting Essentials", "Advanced Banking and Financial Services Fundamentals"],
   R7: ["Customer Service Readiness", "Administrative Support Readiness", "Logistics Readiness"],
 };
+
+// Current ranking tracks inherit workshop links from their training groups.
+for (const groupId of Object.keys(COURSE_GROUPS)) {
+  ITEM_WORKSHOPS[groupId] = [...new Set(
+    Object.entries(COURSES)
+      .filter(([, course]) => course.group === groupId)
+      .flatMap(([courseId]) => ITEM_WORKSHOPS[courseId] ?? []),
+  )];
+}

@@ -108,7 +108,7 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
       if (!Array.isArray(a[k]) || !a[k]?.length || a[k]?.some((id) => !Q[k].options.some((o) => o.id === id))) e[k] = "اختر خياراً واحداً على الأقل";
     });
     if (!a.Q22) e.Q22 = REQ;
-    if (!validTrackOrder(a.Q24)) e.Q24 = "يرجى ترتيب المسارات السبعة";
+    if (!validTrackOrder(a.Q24)) e.Q24 = "يرجى ترتيب المسارات الستة";
     if (!a.Q25G?.length) e.Q25G = "اختر مساراً تدريبياً واحداً على الأقل لعرض الدورات";
     const m = selectedCourses(a).filter((c) => a.Q25?.[c.id] === undefined).length;
     if (m) e.Q25 = `بقي ${m} من الدورات دون اختيار`;

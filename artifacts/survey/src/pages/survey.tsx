@@ -11,7 +11,7 @@ import {
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, b2bAllowed, normalizeDraft,
+   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, b2bAllowed, normalizeDraft,
 } from "@/lib/survey-logic";
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
@@ -173,8 +173,8 @@ export default function SurveyPage() {
   };
 
   useEffect(() => {
-    if (step === STEP_S4 && !answers.Q24) set("Q24", defaultTrackOrder());
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (step === STEP_S4 && !validTrackOrder(answers.Q24)) set("Q24", defaultTrackOrder());
+  }, [step, answers.Q24]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { window.scrollTo({ top: 0 }); }, [step, done]); // instant: the 0.3s section crossfade should land on the new section, not mid-scroll
 
@@ -447,7 +447,7 @@ export default function SurveyPage() {
                     </QuestionShell>
                   </div>
                    <QuestionShell id="Q24" num={nums.Q24} title={Q.Q24.text} hint={Q.Q24.hint} error={errors.Q24}>
-                    <RankList tracks={TRACKS} value={answers.Q24 ?? defaultTrackOrder()} onChange={(v) => set("Q24", v)} />
+                    <RankList tracks={TRACKS} value={validTrackOrder(answers.Q24) ? answers.Q24 : defaultTrackOrder()} onChange={(v) => set("Q24", v)} />
                   </QuestionShell>
                   <QuestionShell id="Q25G" num={nums.Q25G} title={Q.Q25G.text} hint={Q.Q25G.hint} error={errors.Q25G}>
                     <MultiChoice qid="Q25G" cols={2} options={groupOptions} value={answers.Q25G} onChange={setGroups} />

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { Q, TRACKS, LEGACY_TRACKS, SKILLS, COURSE_GROUPS, type Answers } from "../../artifacts/survey/src/lib/survey-definition";
+import { Q, TRACKS, LEGACY_TRACKS, REPORT_TRACKS, SKILLS, COURSE_GROUPS, type Answers } from "../../artifacts/survey/src/lib/survey-definition";
 import { defaultTrackOrder, normalizeDraft, ownerAllowed, jobLevelRequired, b2bAllowed, questionNumbers, validateStep, validTrackOrder } from "../../artifacts/survey/src/lib/survey-logic";
 import { preferences, trackRanks, matching } from "../../artifacts/api-server/src/lib/analytics";
 import { catalogue } from "../../artifacts/api-server/src/data/catalogue";
@@ -39,7 +39,8 @@ assert.equal(ownerAllowed({ Q5: { sector: "government" } }), false);
 assert.equal(ownerAllowed({ Q5: { sector: "entrepreneur" } }), true);
 for (const k of ["Q19", "Q20", "Q21"] as const) assert.ok(validateStep(3, { ...base, [k]: [] })[k]);
 assert.ok(validateStep(3, { ...base, Q26: [...base.Q26!, "packages"] }).Q26);
-assert.equal(TRACKS.length, 7);
+assert.equal(TRACKS.length, 6);
+assert.deepEqual(TRACKS, Q.Q25G.options);
 assert.deepEqual(Object.keys(SERVER_TRACKS), defaultTrackOrder());
 assert.equal(validTrackOrder([...defaultTrackOrder().slice(1), "R2"]), false);
 const old = { ...base, Q6: "owner", Q19: "center", Q20: "short", Q21: "morning", Q24: LEGACY_TRACKS.map((t) => t.id), Q11: ["kpis"], Q23: "attendance" };
@@ -59,11 +60,18 @@ for (const k of ["Q19", "Q20", "Q21"]) {
   assert.equal(p.options[1].count, 1);
 }
 const ranks = trackRanks(rows).items;
-assert.equal(ranks.find((t) => t.trackId === "R1")!.score, 100);
-assert.equal(ranks.find((t) => t.trackId === "R7")!.score, 0);
+assert.equal(ranks.find((t) => t.trackId === "G1")!.score, 100);
+assert.equal(ranks.find((t) => t.trackId === "G6")!.score, 0);
 assert.equal(ranks.find((t) => t.trackId === "T1")!.n, 1);
 assert.match(ranks.find((t) => t.trackId === "T1")!.label, /مسار سابق/);
+const reportOrder = REPORT_TRACKS.map((t) => t.id);
+assert.equal(normalizeDraft({ ...base, Q24: reportOrder }).Q24, undefined);
+const allRanks = trackRanks([...rows, row({ Q24: reportOrder })]).items;
+assert.equal(allRanks.find((t) => t.trackId === "R1")!.score, 100);
+assert.equal(allRanks.find((t) => t.trackId === "R7")!.score, 0);
+assert.equal(allRanks.find((t) => t.trackId === "R1")!.n, 1);
+assert.equal(allRanks.find((t) => t.trackId === "G1")!.n, 1);
 for (const t of TRACKS) for (const title of ITEM_WORKSHOPS[t.id]) assert.ok(catalogue.some((w) => w.titleEn === title), title);
 assert.ok(matching(rows, 40));
 assert.equal(Q.Q26.max, 3);
-console.log("PASS: removed questions, profile rules, multi-select validation, draft normalization, seven-track ranking, historical reporting and matching.");
+console.log("PASS: removed questions, profile rules, multi-select validation, draft normalization, consistent training-track ranking, historical reporting and matching.");

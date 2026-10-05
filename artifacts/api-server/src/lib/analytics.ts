@@ -1,6 +1,6 @@
 import type { ResponseRow } from "@workspace/db";
 import { catalogue, CATEGORY_LABELS, type Workshop } from "../data/catalogue";
-import { SKILLS, COURSES, COURSE_GROUPS, TRACKS, LEGACY_TRACKS, QUESTION_LABELS, SECTION_LABELS, ITEM_WORKSHOPS } from "../data/survey-items";
+import { SKILLS, COURSES, COURSE_GROUPS, TRACKS, LEGACY_TRACKS, REPORT_TRACKS, QUESTION_LABELS, SECTION_LABELS, ITEM_WORKSHOPS } from "../data/survey-items";
 
 type Answers = Record<string, unknown>;
 type Rating = { importance?: number; performance?: number };
@@ -146,17 +146,16 @@ export function courseDemand(rows: ResponseRow[]) {
 export function trackRanks(rows: ResponseRow[]) {
   const validOrder = (v: unknown, ids: string[]): v is string[] =>
     Array.isArray(v) && v.length === ids.length && new Set(v).size === ids.length && ids.every((id) => v.includes(id));
-  const currentIds = Object.keys(TRACKS);
-  const legacyIds = Object.keys(LEGACY_TRACKS);
+  const sets = [TRACKS, LEGACY_TRACKS, REPORT_TRACKS];
   const orders = rows.map((r) => (r.answers as Answers).Q24)
-    .filter((v): v is string[] => validOrder(v, currentIds) || validOrder(v, legacyIds));
+    .filter((v): v is string[] => sets.some((tracks) => validOrder(v, Object.keys(tracks))));
   return {
-    items: Object.entries({ ...TRACKS, ...LEGACY_TRACKS })
+    items: Object.entries({ ...TRACKS, ...LEGACY_TRACKS, ...REPORT_TRACKS })
       .filter(([id]) => id in TRACKS || orders.some((o) => o.includes(id)))
       .map(([trackId, label]) => {
         const ranks = orders.map((o) => o.indexOf(trackId) + 1).filter((k) => k > 0);
         const m = mean(ranks);
-        const size = trackId in TRACKS ? currentIds.length : legacyIds.length;
+        const size = Object.keys(sets.find((tracks) => trackId in tracks)!).length;
         return {
           trackId,
           label: trackId in TRACKS ? label : `${label} (مسار سابق)`,

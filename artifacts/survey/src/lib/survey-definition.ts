@@ -175,7 +175,7 @@ export const Q = {
       o("attendance", "شهادة حضور فقط"), o("not_important", "الشهادة غير مهمة بالنسبة لي"),
     ],
   },
-  Q24: { id: "Q24", text: "ترتيب المسارات المستقبلية التدريبية", hint: "رتّب المسارات السبعة من 1 (الأهم) إلى 7 (الأقل أهمية). اسحب البطاقات أو استخدم الأسهم." },
+  Q24: { id: "Q24", text: "ترتيب المسارات المستقبلية التدريبية", hint: "رتّب المسارات الستة من 1 (الأهم) إلى 6 (الأقل أهمية). اسحب البطاقات أو استخدم الأسهم." },
   Q25G: {
     id: "Q25G", text: "ما المسارات التدريبية التي تهمك؟",
     hint: "اختر مساراً واحداً أو أكثر، وسنعرض لك دورات المسارات التي اخترتها فقط.",
@@ -236,7 +236,7 @@ export const LEGACY_TRACKS: Track[] = [
   "التحكيم التجاري وعقود الاستثمار",
 ].map((label, i) => ({ id: `T${i + 1}`, label }));
 
-export const TRACKS: Track[] = [
+export const REPORT_TRACKS: Track[] = [
   { id: "R1", label: "المهارات الشخصية", english: "Soft Skills" },
   { id: "R2", label: "الذكاء الاصطناعي والأمن السيبراني", english: "AI & Cybersecurity" },
   { id: "R3", label: "تحليلات الأعمال وتحليل البيانات", english: "Business Analytics & Data Analytics" },
@@ -245,6 +245,9 @@ export const TRACKS: Track[] = [
   { id: "R6", label: "المالية", english: "Financial" },
   { id: "R7", label: "الجاهزية المهنية والتوظيف", english: "Career Readiness & Employment" },
 ];
+
+// Both track questions share the same identifiers and wording.
+export const TRACKS: Track[] = Object.entries(GROUP_LABELS).map(([id, label]) => ({ id, label }));
 
 const c = (n: number, label: string): Course => ({ id: `C${n}`, label });
 export const COURSE_GROUPS: CourseGroup[] = [
@@ -355,7 +358,7 @@ export const SUB_LABELS: Record<string, Record<string, string>> = Object.fromEnt
   Object.entries(Q5_SUB).map(([k, v]) => [k, Object.fromEntries(v.map((op) => [op.id, op.label]))]),
 );
 export const SKILL_LABELS: Record<string, string> = Object.fromEntries(SKILLS.map((s) => [s.id, s.label]));
-export const TRACK_LABELS: Record<string, string> = Object.fromEntries([...LEGACY_TRACKS, ...TRACKS].map((s) => [s.id, s.label]));
+export const TRACK_LABELS: Record<string, string> = Object.fromEntries([...LEGACY_TRACKS, ...REPORT_TRACKS, ...TRACKS].map((s) => [s.id, s.label]));
 export const COURSE_LABELS: Record<string, string> = Object.fromEntries(ALL_COURSES.map((s) => [s.id, s.label]));
 export const LEVEL_LABELS = Q.Q25.levels;
 export const optionLabel = (qid: string, id: string) => OPTION_LABELS[qid]?.[id] ?? id;
