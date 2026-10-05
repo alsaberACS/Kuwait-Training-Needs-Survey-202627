@@ -11,7 +11,7 @@ import {
 } from "@/lib/survey-definition";
 import {
   STEP_INTRO, STEP_S1, STEP_PATH, STEP_S4, STEP_S5, PROGRESS_LABELS, suggestPath, questionNumbers,
-   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, normalizeDraft,
+   orderedCourseGroups, selectedCourseGroups, suggestedGroups, pruneCourseAnswers, defaultTrackOrder, validateStep, bookedCourses, EMAIL_RE, validatePhone, ownerAllowed, jobLevelRequired, b2bAllowed, normalizeDraft,
 } from "@/lib/survey-logic";
 import {
   QuestionShell, SingleChoice, MultiChoice, OptionCard, SkillMatrix, RankList, CourseMatrix, NextIcon,
@@ -127,7 +127,7 @@ export default function SurveyPage() {
     setConsent(true);
     if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
     const requestedStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5);
-    setStep(jobLevelRequired(resumed) && !resumed.Q6 ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
+    setStep(!resumed.Q7 || (jobLevelRequired(resumed) && !resumed.Q6) ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
     setResumeHandled(true);
   };
   const startFresh = () => {
@@ -138,6 +138,7 @@ export default function SurveyPage() {
     setAnswers((a) => {
       const next = { ...a, [k]: v };
       if (k === "Q5" && (!jobLevelRequired(next) || (!ownerAllowed(next) && next.Q6 === "owner"))) delete next.Q6;
+      if (k === "Q5" && !b2bAllowed(next) && next.Q7 === "B2B") delete next.Q7;
       return next;
     });
     setErrors((e) => {
@@ -365,7 +366,7 @@ export default function SurveyPage() {
                   <QuestionShell id="Q7" num={nums.Q7} title={Q.Q7.text} error={errors.Q7}
                     hint={suggestion && !answers.Q7 ? "بناءً على إجاباتك، ميّزنا لك المسار الأقرب. أكّد اختيارك بالضغط عليه." : "اختيارك هنا يحدد الأسئلة التالية."}>
                     <div className="grid gap-3 sm:grid-cols-2">
-                      {(["B2B", "B2C"] as const).map((p) => {
+                      {(["B2B", "B2C"] as const).filter((p) => p !== "B2B" || b2bAllowed(answers)).map((p) => {
                         const sel = answers.Q7 === p;
                         const sug = suggestion === p && !answers.Q7;
                         const Icon = p === "B2B" ? Building2 : UserRound;

@@ -56,6 +56,7 @@ export const defaultTrackOrder = () => TRACKS.map((t) => t.id);
 
 export const ownerAllowed = (a: Answers) => !["private", "government"].includes(a.Q5?.sector ?? "");
 export const jobLevelRequired = (a: Answers) => a.Q5?.sector !== "not_working";
+export const b2bAllowed = (a: Answers) => a.Q5?.sector !== "not_working";
 export const validTrackOrder = (v: unknown): v is string[] =>
   Array.isArray(v) && v.length === TRACKS.length && new Set(v).size === TRACKS.length &&
   TRACKS.every((t) => v.includes(t.id));
@@ -70,6 +71,7 @@ export function normalizeDraft(raw: Record<string, unknown>): Answers {
   delete a.Q11;
   delete a.Q23;
   if (!jobLevelRequired(a) || (!ownerAllowed(a) && a.Q6 === "owner")) delete a.Q6;
+  if (!b2bAllowed(a) && a.Q7 === "B2B") delete a.Q7;
   if (!validTrackOrder(a.Q24)) delete a.Q24;
   return a;
 }
@@ -86,6 +88,7 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
     else if (q5.sub === "other" && !q5.other?.trim()) e.Q5 = "يرجى كتابة اسم القطاع أو الجهة";
     if (!ownerAllowed(a) && a.Q6 === "owner") e.Q6 = "يرجى اختيار مستوى وظيفي يتناسب مع القطاع المحدد";
     if (!a.Q7) e.Q7 = "يرجى تحديد صفتك في المشاركة لنعرض لك الأسئلة المناسبة";
+    else if (!b2bAllowed(a) && a.Q7 === "B2B") e.Q7 = "يرجى اختيار مسار الأفراد بما يتناسب مع القطاع المحدد";
   }
   if (step === STEP_PATH) {
     if (a.Q7 === "B2B") {
