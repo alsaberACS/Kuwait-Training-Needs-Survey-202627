@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, responsesTable, type ResponseRow } from "@workspace/db";
 import { CreateResponseBody, UpdateResponseBody, CompleteResponseBody } from "@workspace/api-zod";
 
@@ -50,8 +50,17 @@ router.patch("/responses/:id", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
   const existing = await load(req.params.id);
   if (!existing) return res.status(404).json({ error: "Response not found" });
-  if (existing.status === "complete") return res.status(409).json({ error: "Response already completed" });
   const { consent, path, currentStep, answers, contact } = parsed.data;
+  if (existing.status === "complete") {
+    if (contact === undefined || [consent, path, currentStep, answers].some((v) => v !== undefined)) {
+      return res.status(409).json({ error: "Only optional contact details may be updated after completion" });
+    }
+    const [row] = await db.update(responsesTable)
+      .set({ contact, updatedAt: new Date() })
+      .where(and(eq(responsesTable.id, existing.id), eq(responsesTable.status, "complete")))
+      .returning();
+    return res.json(toDto(row));
+  }
   const [row] = await db
     .update(responsesTable)
     .set({
@@ -62,8 +71,9 @@ router.patch("/responses/:id", async (req, res) => {
       ...(contact !== undefined ? { contact } : {}),
       updatedAt: new Date(),
     })
-    .where(eq(responsesTable.id, existing.id))
+    .where(and(eq(responsesTable.id, existing.id), eq(responsesTable.status, "draft")))
     .returning();
+  if (!row) return res.status(409).json({ error: "Response already completed" });
   return res.json(toDto(row));
 });
 
@@ -72,6 +82,7 @@ router.post("/responses/:id/complete", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.message });
   const existing = await load(req.params.id);
   if (!existing) return res.status(404).json({ error: "Response not found" });
+  if (existing.status === "complete") return res.json(toDto(existing));
   const { path, answers, contact, durationSec } = parsed.data;
   if (!existing.consent && answers.consent !== true) return res.status(400).json({ error: "Consent is required" });
   const [row] = await db
@@ -87,8 +98,13 @@ router.post("/responses/:id/complete", async (req, res) => {
       completedAt: existing.completedAt ?? new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(responsesTable.id, existing.id))
+    .where(and(eq(responsesTable.id, existing.id), eq(responsesTable.status, "draft")))
     .returning();
+  if (!row) {
+    const completed = await load(existing.id);
+    if (!completed) return res.status(404).json({ error: "Response not found" });
+    return res.json(toDto(completed));
+  }
   return res.json(toDto(row));
 });
 

@@ -67,7 +67,8 @@ paths:
     patch:
       operationId: updateResponse
       tags: [responses]
-      summary: Autosave draft answers
+      summary: Autosave draft answers or add optional contact details to a completed response
+      description: Completed responses accept contact-only updates. Their survey answers, completion time, and duration cannot be changed.
       requestBody:
         required: true
         content:
@@ -88,7 +89,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
         "409":
-          description: Already completed
+          description: Survey answers cannot be edited after completion
           content:
             application/json:
               schema:
@@ -99,7 +100,8 @@ paths:
     post:
       operationId: completeResponse
       tags: [responses]
-      summary: Submit the final answers and mark the response complete
+      summary: Submit survey answers before the optional contact section
+      description: Idempotent. Repeated requests return the completed response without changing its answers, duration, or completion time. Use a contact-only PATCH to add optional contact details afterward.
       requestBody:
         required: true
         content:

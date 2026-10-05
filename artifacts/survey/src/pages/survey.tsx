@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, Clock, ShieldCheck, ArrowRight, Loader2, WifiOff, RefreshCw, Sparkles, Copy, Check, Building2, UserRound, Bookmark, Phone, Mail, User } from "lucide-react";
 import {
@@ -96,6 +97,7 @@ export default function SurveyPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [netError, setNetError] = useState<null | (() => void)>(null);
   const [done, setDone] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [resumeHandled, setResumeHandled] = useState(false);
   const [advanceRequest, setAdvanceRequest] = useState<{ questionId: string; targetId?: string; step: number } | null>(null);
   const requestAdvance = (questionId: string, targetId?: string) => setAdvanceRequest({ questionId, targetId, step });
@@ -103,6 +105,7 @@ export default function SurveyPage() {
   const createM = useCreateResponse();
   const updateM = useUpdateResponse();
   const completeM = useCompleteResponse();
+  const queryClient = useQueryClient();
 
   const resumeQ = useGetResponse(storedId ?? "", {
     query: { enabled: !!storedId && !resumeHandled, queryKey: getGetResponseQueryKey(storedId ?? ""), retry: 1 },
@@ -112,7 +115,14 @@ export default function SurveyPage() {
     if (!storedId || resumeHandled) return;
     if (resumeQ.isError) { localStorage.removeItem(LS_KEY); setStoredId(null); setResumeHandled(true); }
     if (resumeQ.data && resumeQ.data.status === "complete") {
-      localStorage.removeItem(LS_KEY); setStoredId(null); setResumeHandled(true);
+      const r = resumeQ.data;
+      setResponseId(r.id);
+      setAnswers((r.answers ?? {}) as Answers);
+      setConsent(true);
+      if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
+      setSubmitted(true);
+      setStep(STEP_S5);
+      setResumeHandled(true);
     }
   }, [resumeQ.data, resumeQ.isError, storedId, resumeHandled]);
 
@@ -126,7 +136,8 @@ export default function SurveyPage() {
     setAnswers(resumed);
     setConsent(true);
     if (r.contact) setContact({ name: r.contact.name ?? "", email: r.contact.email ?? "", phone: r.contact.phone ?? "+965 " });
-    const requestedStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S5);
+    // Older drafts may have reached contact without being submitted.
+    const requestedStep = Math.min(Math.max(r.currentStep || STEP_S1, STEP_S1), STEP_S4);
     setStep(!resumed.Q7 || (jobLevelRequired(resumed) && !resumed.Q6) ? STEP_S1 : requestedStep > STEP_S4 && Object.keys(validateStep(STEP_S4, resumed)).length ? STEP_S4 : requestedStep);
     setResumeHandled(true);
   };
@@ -204,9 +215,13 @@ export default function SurveyPage() {
 
   const next = async () => {
     setAdvanceRequest(null);
-    const e = validateStep(step, answers);
+    const stages = step === STEP_S4 ? [STEP_S1, STEP_PATH, STEP_S4] : [step];
+    const invalid = stages.map((s) => ({ step: s, errors: validateStep(s, answers) }))
+      .find((v) => Object.keys(v.errors).length > 0);
+    const e = invalid?.errors ?? {};
     setErrors(e);
     if (Object.keys(e).length) {
+      if (invalid && invalid.step !== step) setStep(invalid.step);
       const first = Object.keys(e)[0];
       const target = document.getElementById(`q-${first}`);
       if (target) focusSurveyTarget(target);
@@ -214,7 +229,18 @@ export default function SurveyPage() {
     }
     setNetError(null);
     try {
-      await save(step + 1);
+      if (step === STEP_S4) {
+        if (!responseId || !answers.Q7) return;
+        const started = Number(localStorage.getItem(LS_START) ?? Date.now());
+        const completed = await completeM.mutateAsync({
+          id: responseId,
+          data: { path: answers.Q7, answers: answers as Record<string, unknown>, durationSec: Math.max(0, Math.round((Date.now() - started) / 1000)) },
+        });
+        queryClient.setQueryData(getGetResponseQueryKey(responseId), completed);
+        setSubmitted(true);
+      } else {
+        await save(step + 1);
+      }
       setStep(step + 1);
     } catch {
       setNetError(() => next);
@@ -229,10 +255,16 @@ export default function SurveyPage() {
     return e;
   };
 
-  const submit = async () => {
+  const finish = () => {
+    localStorage.removeItem(LS_KEY);
+    localStorage.removeItem(LS_START);
+    setDone(true);
+  };
+
+  const saveContact = async () => {
     const e = contactErrors();
     setErrors(e);
-    if (Object.keys(e).length || !responseId || !answers.Q7) return;
+    if (Object.keys(e).length || !responseId || !submitted) return;
     setNetError(null);
     const ph = contact.phone.trim();
     const c = {
@@ -240,17 +272,15 @@ export default function SurveyPage() {
       email: contact.email.trim() || undefined,
       phone: ph && ph !== "+965" ? ph : undefined,
     };
-    const started = Number(localStorage.getItem(LS_START) ?? Date.now());
     try {
-      await completeM.mutateAsync({
+      const updated = await updateM.mutateAsync({
         id: responseId,
-        data: { path: answers.Q7, answers: answers as Record<string, unknown>, contact: c, durationSec: Math.round((Date.now() - started) / 1000) },
+        data: { contact: c },
       });
-      localStorage.removeItem(LS_KEY);
-      localStorage.removeItem(LS_START);
-      setDone(true);
+      queryClient.setQueryData(getGetResponseQueryKey(responseId), updated);
+      finish();
     } catch {
-      setNetError(() => submit);
+      setNetError(() => saveContact);
     }
   };
 
@@ -271,7 +301,7 @@ export default function SurveyPage() {
       if (index < 0) return;
       const following = questions[index + 1];
       if (following) focusSurveyTarget(following);
-      else if (step < STEP_S5) void next(); // validates and saves; never submits the survey
+      else if (step < STEP_S5) void next(); // validates and submits before opening optional contact
     }, 300);
     return () => window.clearTimeout(timer);
   }, [advanceRequest, answers, busy, step, done]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -290,7 +320,7 @@ export default function SurveyPage() {
   return (
     <SurveyNavigationContext.Provider value={requestAdvance}>
     <div className="min-h-[100dvh] paper-bg grain">
-      <Progress step={step} path={path} saving={updateM.isPending} />
+      <Progress step={step} path={path} saving={updateM.isPending || completeM.isPending} />
       <main className="mx-auto max-w-3xl px-4 pb-40">
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 24 }} transition={{ duration: 0.3 }}>
@@ -476,6 +506,13 @@ export default function SurveyPage() {
             {step === STEP_S5 && (
               <>
                 <SectionHead kicker="04" title={SECTION_TITLES.s5} note={CONTACT_INTRO} />
+                <div className="mb-5 flex items-start gap-3 rounded-2xl border border-[hsl(var(--teal)/.35)] bg-secondary/60 p-5" role="status" data-testid="status-survey-submitted">
+                  <ShieldCheck className="mt-1 h-6 w-6 shrink-0 text-[hsl(var(--teal))]" />
+                  <div>
+                    <p className="font-semibold text-primary">تم إرسال إجابات الاستبانة بنجاح</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">بيانات التواصل اختيارية. يمكنك إضافتها الآن أو إنهاء المشاركة أو إغلاق الصفحة؛ إجاباتك مُرسلة ومحفوظة بالفعل.</p>
+                  </div>
+                </div>
                 {booked.length > 0 ? (
                   <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="relative mb-5 overflow-hidden rounded-2xl ink-panel p-6" data-testid="card-booked">
                     <div className="absolute -end-10 -top-10 h-40 w-40 sadu opacity-10 rotate-12" />
@@ -489,7 +526,7 @@ export default function SurveyPage() {
                   </motion.div>
                 ) : (
                   <div className="mb-5 rounded-2xl border border-dashed border-accent/50 bg-accent/[.06] p-5 text-sm leading-relaxed">
-                    هل ترغب في استلام جدول الدورات القادمة وخصم التسجيل المبكر؟ اترك بياناتك أدناه، أو أرسل الاستبانة مباشرة.
+                    هل ترغب في استلام جدول الدورات القادمة وخصم التسجيل المبكر؟ اترك بياناتك أدناه، أو أنهِ المشاركة دون إضافة بيانات.
                   </div>
                 )}
                 <div className="grid gap-4 rounded-2xl border border-card-border bg-card p-5 sm:p-7">
@@ -510,7 +547,7 @@ export default function SurveyPage() {
             <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden bg-destructive text-destructive-foreground">
               <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2.5 text-sm" data-testid="status-network-error">
                 <WifiOff className="h-4 w-4 shrink-0" />
-                <span className="flex-1">تعذّر حفظ إجاباتك. تحقق من الاتصال ثم أعد المحاولة، إجاباتك محفوظة على جهازك.</span>
+                <span className="flex-1">{submitted ? "تعذّر حفظ بيانات التواصل. إجابات الاستبانة مُرسلة بالفعل؛ أعد المحاولة أو أنهِ المشاركة دون إضافة بيانات." : "تعذّر حفظ إجاباتك. تحقق من الاتصال ثم أعد المحاولة. لا تغلق الصفحة حتى يكتمل الحفظ."}</span>
                 <button onClick={() => netError()} className="flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 font-medium" data-testid="button-retry">
                   <RefreshCw className="h-3.5 w-3.5" /> إعادة المحاولة
                 </button>
@@ -518,21 +555,26 @@ export default function SurveyPage() {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          {step > STEP_S1 && (
+        <div className={cn("mx-auto flex max-w-3xl items-center gap-3 px-4 py-3", step === STEP_S5 && "flex-col sm:flex-row")}>
+          {step > STEP_S1 && !submitted && (
             <button onClick={back} disabled={busy} className="flex h-13 items-center gap-1.5 rounded-xl border border-border px-4 py-3.5 font-medium hover:bg-muted" data-testid="button-back">
               <ArrowRight className="h-4 w-4" /> السابق
+            </button>
+          )}
+          {step === STEP_S5 && submitted && (
+            <button type="button" onClick={finish} disabled={busy} className="min-h-11 w-full rounded-xl border border-border px-3 py-3 text-sm font-medium hover:bg-muted sm:w-auto" data-testid="button-skip-contact">
+              إنهاء دون إضافة بيانات
             </button>
           )}
           {Object.keys(errors).length > 0 && step !== STEP_S5 && (
             <span className="hidden text-sm text-destructive sm:block">بعض الأسئلة بحاجة إلى إجابة</span>
           )}
           <button
-            onClick={step === STEP_S5 ? submit : next} disabled={busy}
-            className="ms-auto flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform active:scale-[.98] disabled:opacity-70 sm:flex-none sm:min-w-48"
+            onClick={step === STEP_S5 ? saveContact : next} disabled={busy}
+            className={cn("ms-auto flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-transform active:scale-[.98] disabled:opacity-70 sm:flex-none sm:min-w-48", step === STEP_S5 && "w-full sm:w-auto")}
             data-testid={step === STEP_S5 ? "button-submit" : "button-next"}
           >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : step === STEP_S5 ? <>إرسال الاستبانة <Check className="h-5 w-5" /></> : <>التالي <NextIcon /></>}
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : step === STEP_S5 ? <>حفظ بيانات التواصل <Check className="h-5 w-5" /></> : <>التالي <NextIcon /></>}
           </button>
         </div>
       </div>
@@ -548,12 +590,12 @@ function Field({
   error?: string; testId: string; placeholder?: string;
 }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-1.5 block text-sm font-medium">{label} <span className="text-xs text-muted-foreground">(اختياري)</span></span>
       <div className={cn("flex items-center gap-2 rounded-xl border bg-background px-3 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30", error ? "border-destructive" : "border-input")}>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <input type={type} value={value} onChange={(e) => onChange(e.target.value)} dir={ltr ? "ltr" : undefined} placeholder={placeholder}
-          className={cn("h-12 flex-1 bg-transparent outline-none", ltr && "text-end")} data-testid={testId} />
+          className={cn("h-12 min-w-0 w-full flex-1 bg-transparent outline-none", ltr && "text-end")} data-testid={testId} />
       </div>
       {error && <span className="mt-1 block text-sm text-destructive">{error}</span>}
     </label>

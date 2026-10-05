@@ -74,7 +74,8 @@ export const GetResponseResponse = zod.object({
 
 
 /**
- * @summary Autosave draft answers
+ * Completed responses accept contact-only updates. Their survey answers, completion time, and duration cannot be changed.
+ * @summary Autosave draft answers or add optional contact details to a completed response
  */
 export const UpdateResponseParams = zod.object({
   "id": zod.coerce.string()
@@ -114,7 +115,8 @@ export const UpdateResponseResponse = zod.object({
 
 
 /**
- * @summary Submit the final answers and mark the response complete
+ * Idempotent. Repeated requests return the completed response without changing its answers, duration, or completion time. Use a contact-only PATCH to add optional contact details afterward.
+ * @summary Submit survey answers before the optional contact section
  */
 export const CompleteResponseParams = zod.object({
   "id": zod.coerce.string()

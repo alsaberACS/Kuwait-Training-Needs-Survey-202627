@@ -321,7 +321,8 @@ export const getUpdateResponseUrl = (id: string,) => {
 }
 
 /**
- * @summary Autosave draft answers
+ * Completed responses accept contact-only updates. Their survey answers, completion time, and duration cannot be changed.
+ * @summary Autosave draft answers or add optional contact details to a completed response
  */
 export const updateResponse = async (id: string,
     updateResponseRequest: UpdateResponseRequest, options?: Parameters<typeof customFetch>[1]): Promise<SurveyResponse> => {
@@ -388,7 +389,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateResponseMutationVariables = {id: string;data: BodyType<UpdateResponseRequest>}
 
     /**
- * @summary Autosave draft answers
+ * @summary Autosave draft answers or add optional contact details to a completed response
  */
 export const useUpdateResponse = <TError = ErrorType<ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateResponse>>, TError,UpdateResponseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -410,7 +411,8 @@ export const getCompleteResponseUrl = (id: string,) => {
 }
 
 /**
- * @summary Submit the final answers and mark the response complete
+ * Idempotent. Repeated requests return the completed response without changing its answers, duration, or completion time. Use a contact-only PATCH to add optional contact details afterward.
+ * @summary Submit survey answers before the optional contact section
  */
 export const completeResponse = async (id: string,
     completeResponseRequest: CompleteResponseRequest, options?: Parameters<typeof customFetch>[1]): Promise<SurveyResponse> => {
@@ -477,7 +479,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CompleteResponseMutationVariables = {id: string;data: BodyType<CompleteResponseRequest>}
 
     /**
- * @summary Submit the final answers and mark the response complete
+ * @summary Submit survey answers before the optional contact section
  */
 export const useCompleteResponse = <TError = ErrorType<ApiError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeResponse>>, TError,CompleteResponseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
