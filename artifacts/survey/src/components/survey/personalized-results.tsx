@@ -3,7 +3,7 @@ import { ListOrdered, TrendingUp, BookOpen, SlidersHorizontal } from "lucide-rea
 import type { Answers } from "@/lib/survey-definition";
 import { personalizedSummary } from "@/lib/personalized-results";
 
-const ar = (n: number) => n.toLocaleString("ar-EG");
+const formatNumber = (n: number) => n.toLocaleString("en-US");
 
 function Block({ icon, title, children, id }: { icon: ReactNode; title: string; children: ReactNode; id: string }) {
   return (
@@ -37,7 +37,7 @@ export function PersonalizedResults({ answers }: { answers: Answers }) {
           <ol className="grid gap-2">
             {s.priorities.map((p, i) => (
               <li key={p.id} className="flex items-center gap-3 text-[15px]">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold tabular-nums text-primary-foreground">{ar(i + 1)}</span>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold tabular-nums text-primary-foreground">{formatNumber(i + 1)}</span>
                 {p.label}
               </li>
             ))}
@@ -52,12 +52,12 @@ export function PersonalizedResults({ answers }: { answers: Answers }) {
               <li key={k.id} className="rounded-lg bg-muted/50 px-3 py-2.5">
                 <p className="text-[15px] leading-relaxed">{k.label}</p>
                 <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  الأهمية {ar(k.importance)} من ٥ — الأداء الحالي {ar(k.performance)} من ٥ — الفرق {ar(k.gap)}
+                  الأهمية {formatNumber(k.importance)} من 5 — الأداء الحالي {formatNumber(k.performance)} من 5 — الفرق {formatNumber(k.gap)}
                 </p>
               </li>
             ))}
           </ul>
-        ) : <Empty>لا توجد مهارة قيّمتها مهمة (٤ أو ٥) وأداؤها الحالي أقل من أهميتها في إجاباتك.</Empty>}
+        ) : <Empty>لا توجد مهارة قيّمتها مهمة (4 أو 5) وأداؤها الحالي أقل من أهميتها في إجاباتك.</Empty>}
       </Block>
 
       <Block id="courses" icon={<BookOpen className="h-4 w-4" />} title="دورات أبديت اهتمامك بها">

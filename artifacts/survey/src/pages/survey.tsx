@@ -71,7 +71,7 @@ function Progress({ step, answers, status, submitted, submitting, savingContact,
             initial={false} animate={{ width: `${progress.percent}%` }} transition={{ duration: reducedMotion ? 0 : 0.25 }} />
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground" data-testid="text-required-progress">
-          {submitted ? "حُفظت جميع الإجابات المطلوبة · ١٠٠٪" : `${progress.completed.toLocaleString("ar-KW")} من ${progress.total.toLocaleString("ar-KW")} سؤالاً مطلوباً مكتملاً · ${progress.percent.toLocaleString("ar-KW")}٪`}
+          {submitted ? "حُفظت جميع الإجابات المطلوبة · 100٪" : `${progress.completed.toLocaleString("en-US")} من ${progress.total.toLocaleString("en-US")} سؤالاً مطلوباً مكتملاً · ${progress.percent.toLocaleString("en-US")}٪`}
         </p>
         <ol className="mt-2 hidden grid-cols-4 gap-2 sm:grid">
           {labels.map((l, i) => (

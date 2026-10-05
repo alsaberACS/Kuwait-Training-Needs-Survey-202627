@@ -163,7 +163,7 @@ export function MultiChoice({
   );
 }
 
-const ar = (n: number) => n.toLocaleString("ar-EG");
+const formatNumber = (n: number) => n.toLocaleString("en-US");
 const IMP_LEVELS = ["غير مهمة", "قليلة الأهمية", "متوسطة الأهمية", "مهمة", "مهمة جداً"];
 const PERF_LEVELS = ["ضعيف", "دون المتوسط", "متوسط", "جيد", "ممتاز"];
 
@@ -174,7 +174,7 @@ function Scale({ value, onChange, testId, tone, title, levels }: {
     <div role="group" aria-label={title}>
       <p className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{title}</span>
-        <span aria-live="polite" className="tabular-nums">{value ? `${ar(value)} — ${levels[value - 1]}` : "لم يُحدد بعد"}</span>
+        <span aria-live="polite" className="tabular-nums">{value ? `${formatNumber(value)} — ${levels[value - 1]}` : "لم يُحدد بعد"}</span>
       </p>
       <div className="grid grid-cols-5 gap-1.5" dir="ltr">
         {[1, 2, 3, 4, 5].map((n) => {
@@ -182,7 +182,7 @@ function Scale({ value, onChange, testId, tone, title, levels }: {
           return (
             <motion.button
               key={n} type="button" whileTap={{ scale: 0.94 }} onClick={() => onChange(n)} data-testid={`${testId}-${n}`}
-              aria-pressed={on} aria-label={`${title}: ${ar(n)} — ${levels[n - 1]}`}
+              aria-pressed={on} aria-label={`${title}: ${formatNumber(n)} — ${levels[n - 1]}`}
               className={cn(
                 "h-11 rounded-lg border text-base font-semibold tabular-nums transition-colors",
                 on
@@ -190,13 +190,13 @@ function Scale({ value, onChange, testId, tone, title, levels }: {
                   : "border-border bg-background hover:border-primary/40",
               )}
             >
-              {ar(n)}
+              {formatNumber(n)}
             </motion.button>
           );
         })}
       </div>
       <p className="mt-1 flex justify-between text-[11px] leading-tight text-muted-foreground" dir="ltr" aria-hidden>
-        <span>١ {levels[0]}</span><span>٥ {levels[4]}</span>
+        <span>1 {levels[0]}</span><span>5 {levels[4]}</span>
       </p>
     </div>
   );
@@ -265,7 +265,7 @@ export function SkillMatrix({
     <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-muted/60 p-3 text-sm">
       <span className="flex items-start gap-2"><span className="mt-1 h-3 w-3 shrink-0 rounded-sm bg-primary" />{impLabel}</span>
       <span className="flex items-start gap-2"><span className="mt-1 h-3 w-3 shrink-0 rounded-sm bg-accent" />{perfLabel}</span>
-      <span className="ms-auto font-medium tabular-nums" data-testid={`skill-progress-${qid}`}>{ar(done)}/{ar(skills.length)}</span>
+      <span className="ms-auto font-medium tabular-nums" data-testid={`skill-progress-${qid}`}>{formatNumber(done)}/{formatNumber(skills.length)}</span>
     </div>
   );
 
@@ -277,11 +277,11 @@ export function SkillMatrix({
       <div>
         {legend}
         <p className="mb-2 text-sm font-semibold text-primary tabular-nums" aria-live="polite" data-testid={`skill-step-${qid}`}>
-          المهارة {ar(active + 1)} من {ar(skills.length)}
+          المهارة {formatNumber(active + 1)} من {formatNumber(skills.length)}
         </p>
         <div className="mb-3 flex gap-1" role="group" aria-label="التنقل بين المهارات">
           {skills.map((k, i) => (
-            <button key={k.id} type="button" onClick={() => go(i)} aria-label={`المهارة ${ar(i + 1)}${isDone(k.id) ? "، مكتملة" : ""}`}
+            <button key={k.id} type="button" onClick={() => go(i)} aria-label={`المهارة ${formatNumber(i + 1)}${isDone(k.id) ? "، مكتملة" : ""}`}
               aria-current={i === active} data-testid={`skill-jump-${qid}-${k.id}`}
               className="flex h-8 flex-1 items-center justify-center">
               <span className={cn("h-2 w-full rounded-full transition-colors",
@@ -327,7 +327,7 @@ export function SkillMatrix({
               className={cn("scroll-mt-24 rounded-xl border p-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary",
                 complete ? "border-[hsl(var(--teal)/.4)] bg-secondary/40" : showMissing ? "border-destructive/40" : "border-border bg-background/50")}>
               <p className="mb-3 flex gap-2 font-medium leading-relaxed">
-                <span className="text-muted-foreground tabular-nums">{ar(i + 1)}.</span>{s.label}
+                <span className="text-muted-foreground tabular-nums">{formatNumber(i + 1)}.</span>{s.label}
                 {complete && <Check className="ms-auto h-4 w-4 shrink-0 text-[hsl(var(--teal))]" />}
               </p>
               <Scale title="الأهمية" levels={IMP_LEVELS} tone="ink" value={r.importance} onChange={(n) => set(s.id, "importance", n)} testId={`rate-${qid}-${s.id}-imp`} />
