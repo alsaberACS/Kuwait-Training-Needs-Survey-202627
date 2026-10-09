@@ -693,7 +693,6 @@ function Intro({ consent, setConsent, error, onStart, busy, netError, onRetry }:
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-lg font-semibold text-primary-foreground shadow-xl shadow-primary/25 transition-transform active:scale-[.98] disabled:opacity-70">
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <>ابدأ الاستبانة <NextIcon /></>}
           </button>
-          <p className="mt-4 text-center text-xs text-muted-foreground">إعداد وتنفيذ: آسيا للاستشارات والتدريب · لصالح مركز عبدالعزيز حمد الصقر للتنمية</p>
         </motion.div>
       </div>
     </div>
