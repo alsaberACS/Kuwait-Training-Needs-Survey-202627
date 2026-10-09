@@ -222,7 +222,7 @@ export function SkillMatrix({
 }) {
   const advance = useSurveyAdvance();
   const isMobile = useIsMobile();
-  const manualMobileNavigation = isMobile && qid === "Q14";
+  const manualNavigation = qid === "Q14";
   const isDone = (sid: string, v = value) => !!(v[sid]?.importance && v[sid]?.performance);
   const firstIncomplete = () => Math.max(0, skills.findIndex((s) => !isDone(s.id)));
   const [active, setActive] = useState(firstIncomplete);
@@ -252,7 +252,7 @@ export function SkillMatrix({
     const rating = { ...value[sid], [key]: n };
     const next = { ...value, [sid]: rating };
     onChange(next);
-    if (manualMobileNavigation) return;
+    if (manualNavigation) return;
     if (!(rating.importance && rating.performance) || isDone(sid)) return; // only on first completion
     const idx = skills.findIndex((s) => s.id === sid);
     const order = [...skills.slice(idx + 1), ...skills.slice(0, idx)];
@@ -309,11 +309,11 @@ export function SkillMatrix({
             <ChevronRight className="h-4 w-4" /> السابقة
           </button>
           <button type="button"
-            disabled={active === skills.length - 1 && (!manualMobileNavigation || done < skills.length)}
+            disabled={active === skills.length - 1 && (!manualNavigation || done < skills.length)}
             onClick={() => active === skills.length - 1 ? advance(qid) : go(active + 1)}
             data-testid={`skill-next-${qid}`}
             className="flex min-h-11 flex-1 items-center justify-center gap-1 rounded-lg border border-primary/30 px-3 text-sm font-semibold text-primary disabled:opacity-40">
-            {manualMobileNavigation && active === skills.length - 1 ? "متابعة" : "التالية"} <ChevronLeft className="h-4 w-4" />
+            {manualNavigation && active === skills.length - 1 ? "متابعة" : "التالية"} <ChevronLeft className="h-4 w-4" />
           </button>
         </div>
       </div>

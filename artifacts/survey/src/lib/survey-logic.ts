@@ -21,7 +21,7 @@ export function suggestPath(a: Answers): Path | undefined {
 
 export function questionNumbers(path?: Path, sector?: string): Record<string, number> {
   const order = ["Q1", "Q2", "Q3", "Q4", "Q5", ...(sector === "not_working" ? [] : ["Q6"]), "Q7",
-    ...(path === "B2C" ? ["Q15", "Q18"] : ["Q8", "Q9", "Q10", "Q14"]),
+    ...(path === "B2C" ? ["Q18"] : ["Q8", "Q9", "Q14"]),
     "Q19", "Q20", "Q21", "Q22", "Q24", "Q25G", "Q25", "Q26"];
   return Object.fromEntries(order.map((id, i) => [id, i + 1]));
 }
@@ -66,6 +66,8 @@ export function normalizeDraft(raw: Record<string, unknown>): Answers {
   }
   delete a.Q11;
   delete a.Q23;
+  delete a.Q10;
+  delete a.Q15;
   if (!jobLevelRequired(a) || (!ownerAllowed(a) && a.Q6 === "owner")) delete a.Q6;
   if (!b2bAllowed(a) && a.Q7 === "B2B") delete a.Q7;
   if (!validTrackOrder(a.Q24)) delete a.Q24;
@@ -90,11 +92,9 @@ export function validateStep(step: number, a: Answers): Record<string, string> {
     if (a.Q7 === "B2B") {
       if (!a.Q8) e.Q8 = REQ;
       if (!a.Q9) e.Q9 = REQ;
-      if (!a.Q10?.length) e.Q10 = "اختر خياراً واحداً على الأقل";
       const m = SKILLS.filter((s) => !a.Q14?.[s.id]?.importance || !a.Q14?.[s.id]?.performance).length;
       if (m) e.Q14 = `بقي ${m} من المهارات بحاجة إلى تقييم كامل (الأهمية والأداء)`;
     } else {
-      if (!a.Q15?.length) e.Q15 = "اختر خياراً واحداً على الأقل";
       const m = SKILLS.filter((s) => !a.Q18?.[s.id]?.importance || !a.Q18?.[s.id]?.performance).length;
       if (m) e.Q18 = `بقي ${m} من المهارات بحاجة إلى تقييم كامل (الأهمية والأداء)`;
     }

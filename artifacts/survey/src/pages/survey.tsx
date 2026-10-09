@@ -465,9 +465,6 @@ export default function SurveyPage() {
                   <QuestionShell id="Q9" num={nums.Q9} title={Q.Q9.text} error={errors.Q9}>
                     <SingleChoice qid="Q9" options={Q.Q9.options} value={answers.Q9} onChange={(v) => set("Q9", v)} />
                   </QuestionShell>
-                  <QuestionShell id="Q10" num={nums.Q10} title={Q.Q10.text} hint="يمكنك اختيار أكثر من خيار" error={errors.Q10}>
-                    <MultiChoice qid="Q10" options={Q.Q10.options} value={answers.Q10} onChange={(v) => set("Q10", v)} />
-                  </QuestionShell>
                   <QuestionShell id="Q14" num={nums.Q14} title={Q.Q14.text} hint="قيّم كل مهارة مرتين: أهميتها، ثم مستوى الأداء الحالي" error={errors.Q14}>
                     <SkillMatrix qid="Q14" skills={SKILLS} value={answers.Q14} onChange={(v) => set("Q14", v)} impLabel={Q.Q14.importance} perfLabel={Q.Q14.performance} showMissing={!!errors.Q14} />
                   </QuestionShell>
@@ -479,9 +476,6 @@ export default function SurveyPage() {
               <>
                 <SectionHead kicker="02 · B2C" title={SECTION_TITLES.s3} note="أسئلة عنك وعن طموحك المهني. لا توجد إجابة صحيحة أو خاطئة." />
                 <div className="grid gap-4">
-                  <QuestionShell id="Q15" num={nums.Q15} title={Q.Q15.text} hint="يمكنك اختيار أكثر من خيار" error={errors.Q15}>
-                    <MultiChoice qid="Q15" options={Q.Q15.options} value={answers.Q15} onChange={(v) => set("Q15", v)} />
-                  </QuestionShell>
                   <QuestionShell id="Q18" num={nums.Q18} title={Q.Q18.text} hint="قيّم كل مهارة مرتين: أهميتها لك، ثم أداؤك الحالي" error={errors.Q18}>
                     <SkillMatrix qid="Q18" skills={SKILLS} value={answers.Q18} onChange={(v) => set("Q18", v)} impLabel={Q.Q18.importance} perfLabel={Q.Q18.performance} showMissing={!!errors.Q18} />
                   </QuestionShell>

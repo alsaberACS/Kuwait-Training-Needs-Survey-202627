@@ -14,7 +14,7 @@ export interface Page { id: string; section: string; html: string }
 
 /* Document order: the printed questionnaire shows both participant paths, so
    questions are numbered once, in reading order (the online form numbers per path). */
-const ORDER = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q10", "Q14", "Q15", "Q18",
+const ORDER = ["Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9", "Q14", "Q18",
   "Q19", "Q20", "Q21", "Q22", "Q24", "Q25G", "Q25", "Q26"] as const;
 const N: Record<string, number> = Object.fromEntries(ORDER.map((id, i) => [id, i + 1]));
 
@@ -162,7 +162,7 @@ function guide(): string {
         <dt>الجهة</dt><dd>${ORG_MAIN} — ${ORG_PARENT}</dd>
         <dt>النطاق</dt><dd>دولة الكويت · دراسة وطنية <span class="num-ltr">2026/2027</span></dd>
         <dt>الوقت المتوقع</dt><dd>5 إلى 7 دقائق</dd>
-        <dt>عدد الأسئلة</dt><dd>19 سؤالاً لمسار المؤسسات، و17 سؤالاً لمسار الأفراد</dd>
+        <dt>عدد الأسئلة</dt><dd>18 سؤالاً لمسار المؤسسات، و16 سؤالاً لمسار الأفراد</dd>
         <dt>السرية</dt><dd>الإجابات سرية تماماً وتُستخدم للتحليل الإحصائي وتطوير الأعمال فقط</dd>
       </dl>
     </div>
@@ -180,11 +180,11 @@ function guide(): string {
         <div class="step"><span class="n">1</span><div><b>${esc(SECTION_TITLES.s1)} — الأسئلة 1 إلى 7</b><span>يجيب عنها جميع المشاركين. السؤال 7 يحدد مسارك: مؤسسة أو فرد.</span></div></div>
         <div class="arrow">${icon("chevronDown")}</div>
         <div class="fork">
-          <div class="step"><span class="n">2</span><div><b>${esc(SECTION_TITLES.s2)} — الأسئلة 8 إلى 11</b><span>لمن يجيب بصفته يمثل جهة عمله (صانع قرار، صاحب عمل، أو مسؤول تدريب).</span></div></div>
-          <div class="step alt"><span class="n">3</span><div><b>${esc(SECTION_TITLES.s3)} — الأسئلة 12 و13</b><span>لمن يجيب بصفته يمثل نفسه (طالب، باحث عن عمل، أو موظف).</span></div></div>
+          <div class="step"><span class="n">2</span><div><b>${esc(SECTION_TITLES.s2)} — الأسئلة 8 إلى 10</b><span>لمن يجيب بصفته يمثل جهة عمله (صانع قرار، صاحب عمل، أو مسؤول تدريب).</span></div></div>
+          <div class="step alt"><span class="n">3</span><div><b>${esc(SECTION_TITLES.s3)} — السؤال 11</b><span>لمن يجيب بصفته يمثل نفسه (طالب، باحث عن عمل، أو موظف).</span></div></div>
         </div>
         <div class="arrow">${icon("chevronDown")}</div>
-        <div class="step"><span class="n">4</span><div><b>${esc(SECTION_TITLES.s4)} — الأسئلة 14 إلى 21</b><span>يجيب عنها جميع المشاركين: التفضيلات، ترتيب المسارات، والدورات التي تهمك.</span></div></div>
+        <div class="step"><span class="n">4</span><div><b>${esc(SECTION_TITLES.s4)} — الأسئلة 12 إلى 19</b><span>يجيب عنها جميع المشاركين: التفضيلات، ترتيب المسارات، والدورات التي تهمك.</span></div></div>
         <div class="arrow">${icon("chevronDown")}</div>
         <div class="step"><span class="n">5</span><div><b>${esc(SECTION_TITLES.s5)}</b><span>اختياري تماماً، لمن يرغب في الحجز أو تلقي جدول الدورات القادمة.</span></div></div>
       </div>
@@ -227,13 +227,13 @@ function s1b(): string {
         <div class="path b2b"><span class="ribbon"></span>
           <div class="pt"><span class="pic">${icon("building")}</span><span class="code">B2B</span></div>
           <div class="ph">${mk("radio")}<div><h4>${esc(b2b.label)}</h4><p>${esc(desc.B2B)}</p></div></div>
-          <div class="next"><strong>ما ستجيب عنه بعد ذلك (الأسئلة 8 إلى 11):</strong>${nextList(["Q8", "Q9", "Q10", "Q14"])}</div>
+          <div class="next"><strong>ما ستجيب عنه بعد ذلك (الأسئلة 8 إلى 10):</strong>${nextList(["Q8", "Q9", "Q14"])}</div>
           ${goto(`انتقل إلى القسم الثاني — ${pageLink("s2a")}`)}
         </div>
         <div class="path b2c"><span class="ribbon"></span>
           <div class="pt"><span class="pic">${icon("user")}</span><span class="code">B2C</span></div>
           <div class="ph">${mk("radio")}<div><h4>${esc(b2c.label)}</h4><p>${esc(desc.B2C)}</p></div></div>
-          <div class="next"><strong>ما ستجيب عنه بعد ذلك (السؤالان 12 و13):</strong>${nextList(["Q15", "Q18"])}</div>
+          <div class="next"><strong>ما ستجيب عنه بعد ذلك (السؤال 11):</strong>${nextList(["Q18"])}</div>
           ${goto(`انتقل إلى القسم الثالث — ${pageLink("s3")}`)}
         </div>
       </div>` })}
@@ -249,7 +249,6 @@ function s2a(): string {
   <div class="stack">
     ${qcard({ qid: "Q8", type: "single", body: options(Q.Q8.options, "radio", 2) })}
     ${qcard({ qid: "Q9", type: "single", hint: "هل تتوفر لدى مؤسستكم ميزانية معتمدة للتدريب؟", body: options(Q.Q9.options, "radio", 2) })}
-    ${qcard({ qid: "Q10", type: "multi", hint: "أي الحلول المؤسسية التالية تهم جهتكم؟ يمكنك اختيار أكثر من خيار.", body: options(Q.Q10.options, "check", 1) })}
     ${note(`في الصفحة التالية (السؤال ${N.Q14}) ستقيّم عشر مهارات لفريق العمل مرتين: أهميتها لنجاح العمل، ثم مستوى أداء الفريق لها حالياً.`, "teal")}
   </div>`;
 }
@@ -267,7 +266,6 @@ function s3(): string {
   return `
   ${band("03", SECTION_TITLES.s3, `أسئلة عنك وعن طموحك المهني. لا توجد إجابة صحيحة أو خاطئة. يجيب عنها من اختار مسار الأفراد في السؤال 7، ثم ينتقل إلى القسم الرابع (${pageLink("s4a")}).`, "B2C")}
   <div class="stack">
-    ${qcard({ qid: "Q15", type: "multi", hint: "أي برامج الشباب والجاهزية المهنية التالية تهمك؟ يمكنك اختيار أكثر من خيار.", body: options(Q.Q15.options, "check", 2) })}
     ${qcard({ qid: "Q18", type: "scale", hint: "قيّم كل مهارة مرتين: أهميتها لمستقبلك المهني، ثم أداؤك الفعلي لها حالياً. ضع دائرة حول رقم واحد في كل مقياس.", body: matrix("Q18") })}
   </div>`;
 }
