@@ -222,7 +222,7 @@ export function SkillMatrix({
 }) {
   const advance = useSurveyAdvance();
   const isMobile = useIsMobile();
-  const manualNavigation = qid === "Q14";
+  const manualNavigation = qid === "Q14" || qid === "Q18";
   const isDone = (sid: string, v = value) => !!(v[sid]?.importance && v[sid]?.performance);
   const firstIncomplete = () => Math.max(0, skills.findIndex((s) => !isDone(s.id)));
   const [active, setActive] = useState(firstIncomplete);
@@ -338,6 +338,15 @@ export function SkillMatrix({
               <Scale title="الأهمية" levels={IMP_LEVELS} tone="ink" value={r.importance} onChange={(n) => set(s.id, "importance", n)} testId={`rate-${qid}-${s.id}-imp`} />
               <div className="h-3" />
               <Scale title="الأداء الحالي" levels={PERF_LEVELS} tone="gold" value={r.performance} onChange={(n) => set(s.id, "performance", n)} testId={`rate-${qid}-${s.id}-perf`} />
+              {qid === "Q18" && (
+                <button type="button"
+                  disabled={i === skills.length - 1 && done < skills.length}
+                  onClick={() => advance(qid, skills[i + 1] ? `skill-${qid}-${skills[i + 1].id}` : undefined)}
+                  data-testid={`skill-next-${qid}-${s.id}`}
+                  className="mt-3 flex min-h-11 w-full items-center justify-center gap-1 rounded-lg border border-primary/30 px-3 text-sm font-semibold text-primary disabled:opacity-40">
+                  {i === skills.length - 1 ? "متابعة" : "التالية"} <ChevronLeft className="h-4 w-4" />
+                </button>
+              )}
             </div>
           );
         })}
