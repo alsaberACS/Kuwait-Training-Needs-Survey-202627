@@ -9,6 +9,7 @@ Arabic (RTL) field survey "استبانة دراسة التموضع التناف
 - `pnpm run typecheck` — full typecheck; `pnpm --filter @workspace/api-spec run codegen` after editing `lib/api-spec/openapi.yaml`
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` (managed), `ADMIN_ACCESS_KEY` (secret; shared research-team key for `/admin` — sent as `Authorization: Bearer <key>` or `X-Admin-Key`). Without it every admin endpoint returns 503.
+- `pnpm --filter @workspace/survey run pdf` (add `-- --preview` for PNG page previews in `/tmp/questionnaire-pdf`) — regenerates the printable questionnaire `exports/kuwait-training-needs-questionnaire-2026-2027.pdf` from `survey-definition.ts` via headless system Chromium (`CHROMIUM_BIN` overrides the binary). Generator lives in `artifacts/survey/tools/questionnaire-pdf/` (plain Node type-stripping: relative imports need `.ts` extensions, no TS-only runtime syntax). Pages are fixed A4 boxes; the build fails on overflow, so re-run after changing question wording/options and fix the page plan in `pages.ts` if it fails. The print edition numbers questions 1–21 continuously (both paths visible), unlike the per-path numbering online.
 
 ## Structure
 

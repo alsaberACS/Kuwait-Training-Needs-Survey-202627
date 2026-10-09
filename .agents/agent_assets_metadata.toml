@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "7RR9YC91czNfj9o3KUyeZ"
+uri = "file://exports/kuwait-training-needs-questionnaire-2026-2027.pdf"
+type = "pdf"
+title = "استبانة الاحتياجات التدريبية في الكويت 2026/2027 — النسخة المطبوعة"
+description = "12 صفحات A4: غلاف، دليل الإجابة ومسار الأسئلة، الأقسام الخمسة كاملة (21 سؤالاً، مصفوفتا المهارات، 70 دورة)، وصفحة الشكر. بشعاري مركز عبدالعزيز حمد الصقر للتنمية وASIA Data-Science."
+logical_id = "3f12872d-a597-48a9-9ef9-a83c812d0179"
+content_hash = "sha256:4af4729caece7b2efd2a4a42c42086f59c49e457fddefe363d93645615030d50"
+size = 4326459
+mtime_ms = 1791550423518
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:c255f948-eea2-411a-9cb7-0e49b391ef7f/3f12872d-a597-48a9-9ef9-a83c812d0179/9c37c0c3-78ea-45ab-a18e-c1212ee01aae"
+storage_version_token = "1791550540870402"
+content_type = "application/pdf"
