@@ -32,5 +32,6 @@ Q1–Q4, Q6–Q9, Q19–Q23 → option id string · Q5 → `{ sector, sub, other
 - Keep the questionnaire's navy-and-gold identity and restrained transitions. Mobile skill ratings show one skill at a time with review navigation and neutral explanations. Course selection must have equal-detail expandable descriptions, no recommended/popular badges, and no preselected ratings.
 - In the mobile “فجوة المهارات لفرق العمل” section, selecting ratings must not advance automatically; users click Next to move between skills and Continue after completing all ratings.
 - Use English digits (0–9) throughout the questionnaire, including ratings, progress, and results; preserve Arabic text and RTL layout.
+- Terminology: the questionnaire is always «استبانة» (never «استبيان») in all Arabic copy — UI, admin, metadata, exports and the printed PDF.
 - Personalized summaries appear only after submission and never require contact details. They summarize self-reported answers, not validated assessments. Course descriptions are introductory explanations, not promises of verified syllabi or qualifications.
 - Required-survey progress excludes optional contact and follows the active branch. Show “saved” only after the server confirms the latest answers; draft autosave and section navigation share one serialized writer.
