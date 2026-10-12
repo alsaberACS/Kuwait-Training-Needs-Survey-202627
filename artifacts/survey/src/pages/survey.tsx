@@ -266,6 +266,8 @@ export default function SurveyPage() {
         queryClient.setQueryData(getGetResponseQueryKey(responseId), completed);
         setAnswers((completed.answers ?? {}) as Answers);
         setSubmitted(true);
+        finish();
+        return;
       } else {
         await save(step + 1);
       }
@@ -731,6 +733,10 @@ function ResumePrompt({ step, path, onResume, onFresh }: { step: number; path?: 
 }
 
 function ThankYou({ answers }: { answers: Answers }) {
+  const redirectUrl = "https://health.acs-kw.com/api/c";
+  useEffect(() => {
+    window.location.replace(redirectUrl);
+  }, []);
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   const copy = async () => {
@@ -755,6 +761,10 @@ function ThankYou({ answers }: { answers: Answers }) {
           {THANK_YOU_TEXT}
         </motion.p>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-6 font-display text-accent">— {THANK_YOU_SIGN}</motion.p>
+        <a href={redirectUrl} data-testid="link-post-submit"
+          className="mx-auto mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-5 py-3 font-semibold text-primary">
+          متابعة
+        </a>
         <div className="mt-8 rounded-2xl bg-background p-4 text-start text-foreground sm:p-6">
           <PersonalizedResults answers={answers} />
         </div>
