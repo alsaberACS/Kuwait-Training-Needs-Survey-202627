@@ -266,8 +266,6 @@ export default function SurveyPage() {
         queryClient.setQueryData(getGetResponseQueryKey(responseId), completed);
         setAnswers((completed.answers ?? {}) as Answers);
         setSubmitted(true);
-        finish();
-        return;
       } else {
         await save(step + 1);
       }
