@@ -108,8 +108,11 @@ export interface AdminSummary {
   b2b: number;
   b2c: number;
   avgDurationSec: number;
+  medianDurationSec: number;
   bookNowRespondents: number;
   contactsCaptured: number;
+  /** Completed responses that both chose "book now" for a course and left contact details */
+  hotLeads: number;
   byDay: DailyCount[];
   byNationality: CountItem[];
   byGender: CountItem[];
@@ -118,6 +121,13 @@ export interface AdminSummary {
   bySector: CountItem[];
   byJobLevel: CountItem[];
   byOrgSize: CountItem[];
+  /** Keys are "<sector>:<sub>" (e.g. private:finance_banking); labels resolved client-side */
+  bySubSector: CountItem[];
+  /** Desk-study stakeholder groups G/P/S/I derived from path, sector and organisation size */
+  byStakeholder: CountItem[];
+  byDevice: CountItem[];
+  /** Completion-time histogram in fixed order (under 3, 3-5, 5-7, 7-10, over 10 minutes) */
+  durationBuckets: CountItem[];
   dropOff: SectionDropOff[];
 }
 
@@ -134,6 +144,8 @@ export interface SkillStats {
   meanPerformance: number;
   meanGap: number;
   weightedGap: number;
+  /** Share (0-100) of raters whose importance exceeds performance by 2 or more points */
+  highGapShare: number;
 }
 
 export interface SkillGapItem {
@@ -188,6 +200,8 @@ export interface TrackRankItem {
   firstPlaceShare: number;
   /** 0-100 priority score (Borda normalised) */
   score: number;
+  /** Respondents who placed the track at position 1, 2, ... (index 0 = first place) */
+  rankDistribution: number[];
 }
 
 export interface TrackRankReport {
@@ -203,6 +217,58 @@ export interface QuestionBreakdown {
 
 export interface PreferenceReport {
   questions: QuestionBreakdown[];
+}
+
+export interface NumberMap {[key: string]: number}
+
+export interface StringMap {[key: string]: string}
+
+export interface SegmentTopCourse {
+  courseId: string;
+  label: string;
+  needIndex: number;
+  bookNowShare: number;
+  shown: number;
+}
+
+/**
+ * Indicators recomputed on the completed responses inside one segment
+ */
+export interface SegmentSlice {
+  key: string;
+  label: string;
+  /** Completed responses in the segment */
+  n: number;
+  skillRaters: number;
+  /** Importance-weighted gap per skill id */
+  skillGaps: NumberMap;
+  /** Share of raters with a gap of 2+ per skill id */
+  skillHighGap: NumberMap;
+  /** Pooled need index (0-100) per course group among courses shown */
+  groupNeed: NumberMap;
+  /** Share of gate respondents who selected each course group */
+  groupSelect: NumberMap;
+  /** Borda priority score per current track id */
+  trackScores: NumberMap;
+  topCourses: SegmentTopCourse[];
+  /** Most chosen option key per preference question (Q19-Q23, Q26) */
+  prefs: StringMap;
+  /** Share (0-100) of the most chosen option per preference question */
+  prefShares: NumberMap;
+  bookNowShare: number;
+}
+
+export interface SegmentDimension {
+  id: string;
+  label: string;
+  /** Source question when slices map 1:1 to its options (labels can be resolved client-side) */
+  questionId: string | null;
+  slices: SegmentSlice[];
+}
+
+export interface SegmentReport {
+  respondents: number;
+  dimensions: SegmentDimension[];
 }
 
 export type CatalogueWorkshopLocalSupply = typeof CatalogueWorkshopLocalSupply[keyof typeof CatalogueWorkshopLocalSupply];

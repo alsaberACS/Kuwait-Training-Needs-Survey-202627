@@ -177,8 +177,10 @@ export const GetAdminSummaryResponse = zod.object({
   "b2b": zod.number().int(),
   "b2c": zod.number().int(),
   "avgDurationSec": zod.number(),
+  "medianDurationSec": zod.number(),
   "bookNowRespondents": zod.number().int(),
   "contactsCaptured": zod.number().int(),
+  "hotLeads": zod.number().int().describe('Completed responses that both chose "book now" for a course and left contact details'),
   "byDay": zod.array(zod.object({
   "date": zod.string(),
   "started": zod.number().int(),
@@ -226,6 +228,30 @@ export const GetAdminSummaryResponse = zod.object({
   "count": zod.number().int(),
   "pct": zod.number()
 })),
+  "bySubSector": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "pct": zod.number()
+})).describe('Keys are "<sector>:<sub>" (e.g. private:finance_banking); labels resolved client-side'),
+  "byStakeholder": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "pct": zod.number()
+})).describe('Desk-study stakeholder groups G/P/S/I derived from path, sector and organisation size'),
+  "byDevice": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "pct": zod.number()
+})),
+  "durationBuckets": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "pct": zod.number()
+})).describe('Completion-time histogram in fixed order (under 3, 3-5, 5-7, 7-10, over 10 minutes)'),
   "dropOff": zod.array(zod.object({
   "step": zod.number().int(),
   "label": zod.string(),
@@ -289,21 +315,24 @@ export const GetSkillsGapResponse = zod.object({
   "meanImportance": zod.number(),
   "meanPerformance": zod.number(),
   "meanGap": zod.number(),
-  "weightedGap": zod.number()
+  "weightedGap": zod.number(),
+  "highGapShare": zod.number().describe('Share (0-100) of raters whose importance exceeds performance by 2 or more points')
 }),
   "b2b": zod.object({
   "n": zod.number().int(),
   "meanImportance": zod.number(),
   "meanPerformance": zod.number(),
   "meanGap": zod.number(),
-  "weightedGap": zod.number()
+  "weightedGap": zod.number(),
+  "highGapShare": zod.number().describe('Share (0-100) of raters whose importance exceeds performance by 2 or more points')
 }),
   "b2c": zod.object({
   "n": zod.number().int(),
   "meanImportance": zod.number(),
   "meanPerformance": zod.number(),
   "meanGap": zod.number(),
-  "weightedGap": zod.number()
+  "weightedGap": zod.number(),
+  "highGapShare": zod.number().describe('Share (0-100) of raters whose importance exceeds performance by 2 or more points')
 })
 }))
 })
@@ -353,7 +382,8 @@ export const GetTrackRanksResponse = zod.object({
   "n": zod.number().int(),
   "meanRank": zod.number(),
   "firstPlaceShare": zod.number(),
-  "score": zod.number().describe('0-100 priority score (Borda normalised)')
+  "score": zod.number().describe('0-100 priority score (Borda normalised)'),
+  "rankDistribution": zod.array(zod.number().int()).describe('Respondents who placed the track at position 1, 2, ... (index 0 = first place)')
 }))
 })
 
@@ -376,6 +406,40 @@ export const GetPreferencesResponse = zod.object({
   "count": zod.number().int(),
   "pct": zod.number()
 }))
+}))
+})
+
+
+/**
+ * @summary Key indicators recomputed inside each respondent segment (path, stakeholder group, sector, org size, nationality, gender, age, job level, education)
+ */
+export const GetSegmentReportResponse = zod.object({
+  "respondents": zod.number().int(),
+  "dimensions": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "questionId": zod.string().nullable().describe('Source question when slices map 1:1 to its options (labels can be resolved client-side)'),
+  "slices": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "n": zod.number().int().describe('Completed responses in the segment'),
+  "skillRaters": zod.number().int(),
+  "skillGaps": zod.record(zod.string(), zod.number()).describe('Importance-weighted gap per skill id'),
+  "skillHighGap": zod.record(zod.string(), zod.number()).describe('Share of raters with a gap of 2+ per skill id'),
+  "groupNeed": zod.record(zod.string(), zod.number()).describe('Pooled need index (0-100) per course group among courses shown'),
+  "groupSelect": zod.record(zod.string(), zod.number()).describe('Share of gate respondents who selected each course group'),
+  "trackScores": zod.record(zod.string(), zod.number()).describe('Borda priority score per current track id'),
+  "topCourses": zod.array(zod.object({
+  "courseId": zod.string(),
+  "label": zod.string(),
+  "needIndex": zod.number(),
+  "bookNowShare": zod.number(),
+  "shown": zod.number().int()
+})),
+  "prefs": zod.record(zod.string(), zod.string()).describe('Most chosen option key per preference question (Q19-Q23, Q26)'),
+  "prefShares": zod.record(zod.string(), zod.number()).describe('Share (0-100) of the most chosen option per preference question'),
+  "bookNowShare": zod.number()
+}).describe('Indicators recomputed on the completed responses inside one segment'))
 }))
 })
 

@@ -14,23 +14,69 @@ export function answerKey(answers: Answers, q: string): string {
   return str(v);
 }
 
-function countItems(rows: ResponseRow[], pick: (a: Answers) => string[]): { key: string; label: string; count: number; pct: number }[] {
+type CountItem = { key: string; label: string; count: number; pct: number };
+
+function countRows(rows: ResponseRow[], pick: (r: ResponseRow) => string[], labels: Record<string, string> = {}): CountItem[] {
   const counts = new Map<string, number>();
   let respondents = 0;
   for (const r of rows) {
-    const vals = pick(r.answers as Answers).filter(Boolean);
+    const vals = pick(r).filter(Boolean);
     if (!vals.length) continue;
     respondents++;
     for (const v of vals) counts.set(v, (counts.get(v) ?? 0) + 1);
   }
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
-    .map(([key, count]) => ({ key, label: key, count, pct: respondents ? r2((count / respondents) * 100) : 0 }));
+    .map(([key, count]) => ({ key, label: labels[key] ?? key, count, pct: respondents ? r2((count / respondents) * 100) : 0 }));
+}
+
+function countItems(rows: ResponseRow[], pick: (a: Answers) => string[]): CountItem[] {
+  return countRows(rows, (r) => pick(r.answers as Answers));
 }
 
 const single = (q: string) => (a: Answers) => [answerKey(a, q)];
 // Historical single-choice preferences still count as one selected option.
 const multi = (q: string) => (a: Answers) => [...new Set(Array.isArray(a[q]) ? (a[q] as unknown[]).map(str) : [str(a[q])])];
+
+const hasBookNow = (a: Answers) => Object.values((a.Q25 as Record<string, number>) ?? {}).some((v) => Number(v) === 2);
+const hasContact = (r: ResponseRow) => !!(r.contact && (r.contact.email || r.contact.phone));
+const SME_SIZES = new Set(["micro", "small", "medium"]);
+
+/**
+ * Desk-study stakeholder groups: G government, P private sector, S SMEs, I individuals.
+ * B2C respondents are individuals; B2B respondents are classified by sector, then organisation size.
+ */
+export type StakeholderGroup = "G" | "P" | "S" | "I";
+export const STAKEHOLDER_LABELS: Record<StakeholderGroup, string> = {
+  G: "الجهات الحكومية (G)",
+  P: "القطاع الخاص – مؤسسات كبرى (P)",
+  S: "المنشآت الصغيرة والمتوسطة (S)",
+  I: "الأفراد والمهنيون (I)",
+};
+export function stakeholderGroup(r: ResponseRow): StakeholderGroup | "" {
+  if (r.path === "B2C") return "I";
+  if (r.path !== "B2B") return "";
+  const a = r.answers as Answers;
+  const sector = answerKey(a, "Q5");
+  if (sector === "government") return "G";
+  if (sector === "entrepreneur" || SME_SIZES.has(answerKey(a, "Q8"))) return "S";
+  return "P";
+}
+
+const DURATION_BUCKETS: { key: string; label: string; max: number }[] = [
+  { key: "lt3", label: "أقل من 3 دقائق", max: 180 },
+  { key: "3_5", label: "3 – 5 دقائق", max: 300 },
+  { key: "5_7", label: "5 – 7 دقائق", max: 420 },
+  { key: "7_10", label: "7 – 10 دقائق", max: 600 },
+  { key: "gt10", label: "أكثر من 10 دقائق", max: Infinity },
+];
+
+function median(xs: number[]) {
+  if (!xs.length) return 0;
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
 
 export function summary(all: ResponseRow[]) {
   const completed = all.filter((r) => r.status === "complete");
@@ -52,6 +98,11 @@ export function summary(all: ResponseRow[]) {
     };
   });
   const durations = completed.map((r) => r.durationSec ?? 0).filter((d) => d > 0);
+  const durationBuckets = DURATION_BUCKETS.map((b, i) => {
+    const min = i ? DURATION_BUCKETS[i - 1].max : 0;
+    const count = durations.filter((d) => d > min && d <= b.max).length;
+    return { key: b.key, label: b.label, count, pct: durations.length ? r2((count / durations.length) * 100) : 0 };
+  });
   return {
     total: all.length,
     completed: completed.length,
@@ -60,16 +111,27 @@ export function summary(all: ResponseRow[]) {
     b2b: completed.filter((r) => r.path === "B2B").length,
     b2c: completed.filter((r) => r.path === "B2C").length,
     avgDurationSec: r2(mean(durations)),
-    bookNowRespondents: completed.filter((r) => Object.values(((r.answers as Answers).Q25 as Record<string, number>) ?? {}).some((v) => Number(v) === 2)).length,
-    contactsCaptured: completed.filter((r) => r.contact && (r.contact.email || r.contact.phone)).length,
+    medianDurationSec: r2(median(durations)),
+    bookNowRespondents: completed.filter((r) => hasBookNow(r.answers as Answers)).length,
+    contactsCaptured: completed.filter(hasContact).length,
+    hotLeads: completed.filter((r) => hasBookNow(r.answers as Answers) && hasContact(r)).length,
     byDay: [...byDayMap.entries()].sort().map(([date, v]) => ({ date, ...v })),
     byNationality: countItems(completed, single("Q1")),
     byGender: countItems(completed, single("Q2")),
     byAge: countItems(completed, single("Q3")),
     byEducation: countItems(completed, single("Q4")),
     bySector: countItems(completed, single("Q5")),
+    bySubSector: countItems(completed, (a) => {
+      const v = a.Q5;
+      if (!v || typeof v !== "object") return [];
+      const { sector, sub } = v as { sector?: unknown; sub?: unknown };
+      return str(sector) && str(sub) ? [`${str(sector)}:${str(sub)}`] : [];
+    }),
     byJobLevel: countItems(completed, single("Q6")),
     byOrgSize: countItems(completed, single("Q8")),
+    byStakeholder: countRows(completed, (r) => [stakeholderGroup(r)], STAKEHOLDER_LABELS),
+    byDevice: countRows(completed, (r) => [r.device || "unknown"], { desktop: "حاسوب", mobile: "هاتف", tablet: "جهاز لوحي", unknown: "غير معروف" }),
+    durationBuckets,
     dropOff,
   };
 }
@@ -93,6 +155,8 @@ function skillStats(rows: ResponseRow[], q: "Q14" | "Q18" | "both", skillId: str
     meanPerformance: r2(mean(perf)),
     meanGap: r2(mean(gaps)),
     weightedGap: wsum ? r2(gaps.reduce((a, g, k) => a + g * imp[k], 0) / wsum) : 0,
+    // Share of raters reporting a severe gap (importance exceeds performance by 2+ points).
+    highGapShare: gaps.length ? r2((gaps.filter((g) => g >= 2).length / gaps.length) * 100) : 0,
   };
 }
 
@@ -163,6 +227,8 @@ export function trackRanks(rows: ResponseRow[]) {
           meanRank: r2(m),
           firstPlaceShare: ranks.length ? r2((ranks.filter((k) => k === 1).length / ranks.length) * 100) : 0,
           score: ranks.length ? r2(((size - m) / (size - 1)) * 100) : 0,
+          // How many respondents placed the track at position 1, 2, … size.
+          rankDistribution: Array.from({ length: size }, (_, i) => ranks.filter((k) => k === i + 1).length),
         };
       })
       .sort((a, b) => b.score - a.score),
@@ -177,6 +243,104 @@ export function preferences(rows: ResponseRow[]) {
       const options = countItems(rows, pick);
       return { questionId, label, respondents: rows.filter((r) => pick(r.answers as Answers).filter(Boolean).length > 0).length, options };
     }),
+  };
+}
+
+/* ---------- segment cuts (SURVEY_SPEC §6: B2B vs B2C, government vs private, SME vs large, sector, nationality) ---------- */
+
+type SliceDef = { key: string; label: string; test: (r: ResponseRow) => boolean };
+type DimensionDef = { id: string; label: string; questionId: string | null; slices: SliceDef[] };
+
+const byAnswer = (q: string, options: [string, string][]): SliceDef[] =>
+  options.map(([key, label]) => ({ key, label, test: (r) => answerKey(r.answers as Answers, q) === key }));
+
+const SEGMENT_DIMENSIONS: DimensionDef[] = [
+  {
+    id: "path", label: "طبيعة المشاركة", questionId: null,
+    slices: [
+      { key: "B2B", label: "المؤسسات (B2B)", test: (r) => r.path === "B2B" },
+      { key: "B2C", label: "الأفراد (B2C)", test: (r) => r.path === "B2C" },
+    ],
+  },
+  {
+    id: "stakeholder", label: "الفئة المعنية (G · P · S · I)", questionId: null,
+    slices: (Object.keys(STAKEHOLDER_LABELS) as StakeholderGroup[]).map((g) => ({ key: g, label: STAKEHOLDER_LABELS[g], test: (r) => stakeholderGroup(r) === g })),
+  },
+  {
+    id: "sector", label: "القطاع", questionId: "Q5",
+    slices: byAnswer("Q5", [["government", "القطاع الحكومي"], ["private", "القطاع الخاص"], ["entrepreneur", "ريادة الأعمال"], ["nonprofit", "القطاع غير الربحي"], ["not_working", "لا يعمل حالياً"]]),
+  },
+  {
+    id: "orgSize", label: "حجم المؤسسة (B2B)", questionId: null,
+    slices: [
+      { key: "sme", label: "صغيرة ومتوسطة (أقل من 250)", test: (r) => r.path === "B2B" && SME_SIZES.has(answerKey(r.answers as Answers, "Q8")) },
+      { key: "large", label: "كبرى (250 فأكثر)", test: (r) => r.path === "B2B" && answerKey(r.answers as Answers, "Q8") === "large" },
+    ],
+  },
+  { id: "nationality", label: "الجنسية", questionId: "Q1", slices: byAnswer("Q1", [["kuwaiti", "كويتي"], ["non_kuwaiti", "غير كويتي"]]) },
+  { id: "gender", label: "الجنس", questionId: "Q2", slices: byAnswer("Q2", [["male", "ذكر"], ["female", "أنثى"]]) },
+  { id: "age", label: "الفئة العمرية", questionId: "Q3", slices: byAnswer("Q3", [["u30", "أقل من 30"], ["30_39", "30 – 39"], ["40_49", "40 – 49"], ["50p", "50 فأكثر"]]) },
+  {
+    id: "jobLevel", label: "المستوى الوظيفي", questionId: "Q6",
+    slices: byAnswer("Q6", [["owner", "مالك / شريك مؤسس"], ["senior", "إدارة عليا"], ["manager", "مدير إدارة / قسم"], ["hr", "موارد بشرية وتدريب"], ["employee", "موظف تنفيذي / مهني"], ["student", "طالب / باحث عن عمل"]]),
+  },
+  {
+    id: "education", label: "المستوى التعليمي", questionId: "Q4",
+    slices: byAnswer("Q4", [["below_secondary", "دون الثانوية"], ["secondary", "ثانوية"], ["diploma", "دبلوم"], ["bachelor", "بكالوريوس"], ["postgrad", "دراسات عليا"], ["professional", "شهادات مهنية"]]),
+  },
+];
+
+const PREF_QUESTIONS = ["Q19", "Q20", "Q21", "Q22", "Q23", "Q26"];
+
+function sliceIndicators(rows: ResponseRow[]) {
+  const skills = skillsGap(rows).items;
+  const demand = courseDemand(rows);
+  const gate = demand.groups;
+  const groupNeed: Record<string, number> = {};
+  const groupSelect: Record<string, number> = {};
+  for (const [groupId] of Object.entries(COURSE_GROUPS)) {
+    const codes = rows.flatMap((r) => {
+      const m = ((r.answers as Answers).Q25 as Record<string, unknown>) ?? {};
+      return Object.entries(COURSES).filter(([, c]) => c.group === groupId).map(([id]) => m[id]).filter((v) => v === 0 || v === 1 || v === 2) as number[];
+    });
+    groupNeed[groupId] = codes.length ? r2((mean(codes) / 2) * 100) : 0;
+    groupSelect[groupId] = gate.find((g) => g.groupId === groupId)?.selectedShare ?? 0;
+  }
+  const prefs: Record<string, string> = {};
+  const prefShares: Record<string, number> = {};
+  for (const q of PREF_QUESTIONS) {
+    const top = countItems(rows, multi(q))[0];
+    if (top) { prefs[q] = top.key; prefShares[q] = top.pct; }
+  }
+  return {
+    n: rows.length,
+    skillRaters: rows.filter((r) => { const a = r.answers as Answers; return !!(a.Q14 ?? a.Q18); }).length,
+    skillGaps: Object.fromEntries(skills.map((s) => [s.skillId, s.all.weightedGap])),
+    skillHighGap: Object.fromEntries(skills.map((s) => [s.skillId, s.all.highGapShare])),
+    groupNeed,
+    groupSelect,
+    trackScores: Object.fromEntries(trackRanks(rows).items.filter((t) => t.trackId in TRACKS).map((t) => [t.trackId, t.score])),
+    topCourses: demand.items
+      .filter((c) => c.shown > 0)
+      .sort((a, b) => b.needIndex - a.needIndex || b.bookNowShare - a.bookNowShare || b.shown - a.shown)
+      .slice(0, 3)
+      .map((c) => ({ courseId: c.courseId, label: c.label, needIndex: c.needIndex, bookNowShare: c.bookNowShare, shown: c.shown })),
+    prefs,
+    prefShares,
+    bookNowShare: rows.length ? r2((rows.filter((r) => hasBookNow(r.answers as Answers)).length / rows.length) * 100) : 0,
+  };
+}
+
+/** Key indicators recomputed inside each respondent segment, for cross-segment comparison and heatmaps. */
+export function segments(rows: ResponseRow[]) {
+  return {
+    respondents: rows.length,
+    dimensions: SEGMENT_DIMENSIONS.map((d) => ({
+      id: d.id,
+      label: d.label,
+      questionId: d.questionId,
+      slices: d.slices.map((s) => ({ key: s.key, label: s.label, ...sliceIndicators(rows.filter(s.test)) })),
+    })),
   };
 }
 

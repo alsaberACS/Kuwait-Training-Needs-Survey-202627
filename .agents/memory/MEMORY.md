@@ -3,3 +3,4 @@
 - [Codegen dom.iterable quirk](codegen-dom-iterable.md) — orval client calls Headers.entries(); api-client-react tsconfig lib must include dom.iterable or codegen typecheck fails.
 - [Survey evolution](survey-evolution.md) — keep ranking and selector categories consistent; preserve historical ranking cohorts without reinterpreting their answers.
 - [Printable questionnaire PDF](print-pdf-generation.md) — generated via headless Chromium from survey-definition; fixed A4 pages clip silently, so trust only the overflow audit + previews.
+- [Admin dashboard](admin-dashboard.md) — preview with tagged synthetic rows then delete them; RTL negatives need dir="ltr"; grid items need min-w-0 or wide tables stretch the page on phones.

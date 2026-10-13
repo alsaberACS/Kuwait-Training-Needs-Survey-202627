@@ -5,7 +5,7 @@ import { db, responsesTable } from "@workspace/db";
 import { ListAdminResponsesQueryParams, GetMatchingResultsQueryParams } from "@workspace/api-zod";
 import { toDto } from "./responses";
 import { catalogue } from "../data/catalogue";
-import { summary, skillsGap, courseDemand, trackRanks, preferences, matching, toCatalogueDto, toCsv } from "../lib/analytics";
+import { summary, skillsGap, courseDemand, trackRanks, preferences, segments, matching, toCatalogueDto, toCsv } from "../lib/analytics";
 
 const router: IRouter = Router();
 
@@ -67,6 +67,7 @@ router.get("/admin/skills-gap", async (_req, res) => res.json(skillsGap(await co
 router.get("/admin/course-demand", async (req, res) => res.json(courseDemand(await completedRows(pathOf(req)))));
 router.get("/admin/track-ranks", async (req, res) => res.json(trackRanks(await completedRows(pathOf(req)))));
 router.get("/admin/preferences", async (req, res) => res.json(preferences(await completedRows(pathOf(req)))));
+router.get("/admin/segments", async (_req, res) => res.json(segments(await completedRows())));
 
 router.get("/admin/matching", async (req, res) => {
   const parsed = GetMatchingResultsQueryParams.safeParse(req.query);

@@ -37,6 +37,7 @@ import type {
   MatchingReport,
   PreferenceReport,
   ResponseList,
+  SegmentReport,
   SkillsGapReport,
   SurveyResponse,
   TrackRankReport,
@@ -1051,6 +1052,83 @@ export function useGetPreferences<TData = Awaited<ReturnType<typeof getPreferenc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetPreferencesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSegmentReportUrl = () => {
+
+
+
+
+  return `/api/admin/segments`
+}
+
+/**
+ * @summary Key indicators recomputed inside each respondent segment (path, stakeholder group, sector, org size, nationality, gender, age, job level, education)
+ */
+export const getSegmentReport = async ( options?: Parameters<typeof customFetch>[1]): Promise<SegmentReport> => {
+
+  return customFetch<SegmentReport>(getGetSegmentReportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSegmentReportQueryKey = () => {
+    return [
+    `/api/admin/segments`
+    ] as const;
+    }
+
+
+export const getGetSegmentReportQueryOptions = <TData = Awaited<ReturnType<typeof getSegmentReport>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSegmentReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSegmentReportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSegmentReport>>> = ({ signal }) => getSegmentReport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSegmentReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSegmentReportQueryResult = NonNullable<Awaited<ReturnType<typeof getSegmentReport>>>
+export type GetSegmentReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Key indicators recomputed inside each respondent segment (path, stakeholder group, sector, org size, nationality, gender, age, job level, education)
+ */
+
+export function useGetSegmentReport<TData = Awaited<ReturnType<typeof getSegmentReport>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSegmentReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSegmentReportQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

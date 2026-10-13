@@ -268,6 +268,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PreferenceReport"
+  /admin/segments:
+    get:
+      operationId: getSegmentReport
+      tags: [admin]
+      summary: Key indicators recomputed inside each respondent segment (path, stakeholder group, sector, org size, nationality, gender, age, job level, education)
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: Segment report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SegmentReport"
   /admin/matching:
     get:
       operationId: getMatchingResults
@@ -499,10 +513,15 @@ components:
           type: integer
         avgDurationSec:
           type: number
+        medianDurationSec:
+          type: number
         bookNowRespondents:
           type: integer
         contactsCaptured:
           type: integer
+        hotLeads:
+          type: integer
+          description: Completed responses that both chose "book now" for a course and left contact details
         byDay:
           type: array
           items:
@@ -535,11 +554,30 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CountItem"
+        bySubSector:
+          type: array
+          description: Keys are "<sector>:<sub>" (e.g. private:finance_banking); labels resolved client-side
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byStakeholder:
+          type: array
+          description: Desk-study stakeholder groups G/P/S/I derived from path, sector and organisation size
+          items:
+            $ref: "#/components/schemas/CountItem"
+        byDevice:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountItem"
+        durationBuckets:
+          type: array
+          description: Completion-time histogram in fixed order (under 3, 3-5, 5-7, 7-10, over 10 minutes)
+          items:
+            $ref: "#/components/schemas/CountItem"
         dropOff:
           type: array
           items:
             $ref: "#/components/schemas/SectionDropOff"
-      required: [total, completed, drafts, completionRate, b2b, b2c, avgDurationSec, bookNowRespondents, contactsCaptured, byDay, byNationality, byGender, byAge, byEducation, bySector, byJobLevel, byOrgSize, dropOff]
+      required: [total, completed, drafts, completionRate, b2b, b2c, avgDurationSec, medianDurationSec, bookNowRespondents, contactsCaptured, hotLeads, byDay, byNationality, byGender, byAge, byEducation, bySector, bySubSector, byJobLevel, byOrgSize, byStakeholder, byDevice, durationBuckets, dropOff]
     ResponseList:
       type: object
       properties:
@@ -567,7 +605,10 @@ components:
           type: number
         weightedGap:
           type: number
-      required: [n, meanImportance, meanPerformance, meanGap, weightedGap]
+        highGapShare:
+          type: number
+          description: Share (0-100) of raters whose importance exceeds performance by 2 or more points
+      required: [n, meanImportance, meanPerformance, meanGap, weightedGap, highGapShare]
     SkillGapItem:
       type: object
       properties:
@@ -660,7 +701,12 @@ components:
         score:
           type: number
           description: 0-100 priority score (Borda normalised)
-      required: [trackId, label, n, meanRank, firstPlaceShare, score]
+        rankDistribution:
+          type: array
+          description: Respondents who placed the track at position 1, 2, ... (index 0 = first place)
+          items:
+            type: integer
+      required: [trackId, label, n, meanRank, firstPlaceShare, score, rankDistribution]
     TrackRankReport:
       type: object
       properties:
@@ -691,6 +737,95 @@ components:
           items:
             $ref: "#/components/schemas/QuestionBreakdown"
       required: [questions]
+    NumberMap:
+      type: object
+      additionalProperties:
+        type: number
+    StringMap:
+      type: object
+      additionalProperties:
+        type: string
+    SegmentTopCourse:
+      type: object
+      properties:
+        courseId:
+          type: string
+        label:
+          type: string
+        needIndex:
+          type: number
+        bookNowShare:
+          type: number
+        shown:
+          type: integer
+      required: [courseId, label, needIndex, bookNowShare, shown]
+    SegmentSlice:
+      type: object
+      description: Indicators recomputed on the completed responses inside one segment
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        n:
+          type: integer
+          description: Completed responses in the segment
+        skillRaters:
+          type: integer
+        skillGaps:
+          description: Importance-weighted gap per skill id
+          $ref: "#/components/schemas/NumberMap"
+        skillHighGap:
+          description: Share of raters with a gap of 2+ per skill id
+          $ref: "#/components/schemas/NumberMap"
+        groupNeed:
+          description: Pooled need index (0-100) per course group among courses shown
+          $ref: "#/components/schemas/NumberMap"
+        groupSelect:
+          description: Share of gate respondents who selected each course group
+          $ref: "#/components/schemas/NumberMap"
+        trackScores:
+          description: Borda priority score per current track id
+          $ref: "#/components/schemas/NumberMap"
+        topCourses:
+          type: array
+          items:
+            $ref: "#/components/schemas/SegmentTopCourse"
+        prefs:
+          description: Most chosen option key per preference question (Q19-Q23, Q26)
+          $ref: "#/components/schemas/StringMap"
+        prefShares:
+          description: Share (0-100) of the most chosen option per preference question
+          $ref: "#/components/schemas/NumberMap"
+        bookNowShare:
+          type: number
+      required: [key, label, n, skillRaters, skillGaps, skillHighGap, groupNeed, groupSelect, trackScores, topCourses, prefs, prefShares, bookNowShare]
+    SegmentDimension:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        questionId:
+          type: string
+          nullable: true
+          description: Source question when slices map 1:1 to its options (labels can be resolved client-side)
+        slices:
+          type: array
+          items:
+            $ref: "#/components/schemas/SegmentSlice"
+      required: [id, label, questionId, slices]
+    SegmentReport:
+      type: object
+      properties:
+        respondents:
+          type: integer
+        dimensions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SegmentDimension"
+      required: [respondents, dimensions]
     CatalogueWorkshop:
       type: object
       properties:

@@ -17,8 +17,11 @@ export interface AdminSummary {
   b2b: number;
   b2c: number;
   avgDurationSec: number;
+  medianDurationSec: number;
   bookNowRespondents: number;
   contactsCaptured: number;
+  /** Completed responses that both chose "book now" for a course and left contact details */
+  hotLeads: number;
   byDay: DailyCount[];
   byNationality: CountItem[];
   byGender: CountItem[];
@@ -27,5 +30,12 @@ export interface AdminSummary {
   bySector: CountItem[];
   byJobLevel: CountItem[];
   byOrgSize: CountItem[];
+  /** Keys are "<sector>:<sub>" (e.g. private:finance_banking); labels resolved client-side */
+  bySubSector: CountItem[];
+  /** Desk-study stakeholder groups G/P/S/I derived from path, sector and organisation size */
+  byStakeholder: CountItem[];
+  byDevice: CountItem[];
+  /** Completion-time histogram in fixed order (under 3, 3-5, 5-7, 7-10, over 10 minutes) */
+  durationBuckets: CountItem[];
   dropOff: SectionDropOff[];
 }

@@ -14,4 +14,6 @@ export interface TrackRankItem {
   firstPlaceShare: number;
   /** 0-100 priority score (Borda normalised) */
   score: number;
+  /** Respondents who placed the track at position 1, 2, ... (index 0 = first place) */
+  rankDistribution: number[];
 }

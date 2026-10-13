@@ -12,4 +12,6 @@ export interface SkillStats {
   meanPerformance: number;
   meanGap: number;
   weightedGap: number;
+  /** Share (0-100) of raters whose importance exceeds performance by 2 or more points */
+  highGapShare: number;
 }
