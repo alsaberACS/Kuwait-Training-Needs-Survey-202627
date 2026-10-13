@@ -21,6 +21,7 @@ import { SurveyNavigationContext, focusSurveyTarget } from "@/components/survey/
 import { PersonalizedResults } from "@/components/survey/personalized-results";
 import { surveyProgress } from "@/lib/survey-progress";
 import { useDraftAutosave, type SaveStatus } from "@/hooks/use-draft-autosave";
+import { BackgroundRegistration, REGISTRATION_URL } from "@/components/survey/background-registration";
 
 const LS_KEY = "kw-tna-response-id";
 const LS_START = "kw-tna-started";
@@ -114,6 +115,7 @@ export default function SurveyPage() {
   const [netError, setNetError] = useState<null | (() => void)>(null);
   const [done, setDone] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [backgroundRegistration, setBackgroundRegistration] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const navigationLock = useRef(false);
   const [resumeHandled, setResumeHandled] = useState(false);
@@ -266,6 +268,7 @@ export default function SurveyPage() {
         queryClient.setQueryData(getGetResponseQueryKey(responseId), completed);
         setAnswers((completed.answers ?? {}) as Answers);
         setSubmitted(true);
+        setBackgroundRegistration(true);
       } else {
         await save(step + 1);
       }
@@ -337,7 +340,12 @@ export default function SurveyPage() {
     return () => window.clearTimeout(timer);
   }, [advanceRequest, answers, busy, step, done]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (done) return <ThankYou answers={answers} />;
+  if (done) return (
+    <>
+      <BackgroundRegistration enabled={backgroundRegistration} />
+      <ThankYou answers={answers} />
+    </>
+  );
   if (checkingResume) return <ResumeSkeleton />;
   if (showResume) return <ResumePrompt step={resumeQ.data?.currentStep ?? 1} path={resumeQ.data?.path ?? undefined} onResume={doResume} onFresh={startFresh} />;
   if (step === STEP_INTRO)
@@ -349,6 +357,8 @@ export default function SurveyPage() {
   const booked = bookedCourses(answers);
 
   return (
+    <>
+    <BackgroundRegistration enabled={backgroundRegistration} />
     <SurveyNavigationContext.Provider value={requestAdvance}>
     <div className="min-h-[100dvh] paper-bg grain">
       <Progress step={step} answers={answers} status={draftSave.status} submitted={submitted} submitting={completeM.isPending} savingContact={submitted && updateM.isPending} lastSavedAt={draftSave.lastSavedAt} />
@@ -617,6 +627,7 @@ export default function SurveyPage() {
       </div>
     </div>
     </SurveyNavigationContext.Provider>
+    </>
   );
 }
 
@@ -731,10 +742,6 @@ function ResumePrompt({ step, path, onResume, onFresh }: { step: number; path?: 
 }
 
 function ThankYou({ answers }: { answers: Answers }) {
-  const redirectUrl = "https://health.acs-kw.com/api/c";
-  useEffect(() => {
-    window.location.replace(redirectUrl);
-  }, []);
   const [copied, setCopied] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   const copy = async () => {
@@ -759,9 +766,9 @@ function ThankYou({ answers }: { answers: Answers }) {
           {THANK_YOU_TEXT}
         </motion.p>
         <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-6 font-display text-accent">— {THANK_YOU_SIGN}</motion.p>
-        <a href={redirectUrl} data-testid="link-post-submit"
+        <a href={REGISTRATION_URL} data-testid="link-post-submit"
           className="mx-auto mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-white px-5 py-3 font-semibold text-primary">
-          متابعة
+          فتح صفحة التسجيل
         </a>
         <div className="mt-8 rounded-2xl bg-background p-4 text-start text-foreground sm:p-6">
           <PersonalizedResults answers={answers} />
