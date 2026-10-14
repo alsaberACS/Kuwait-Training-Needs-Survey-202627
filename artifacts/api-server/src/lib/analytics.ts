@@ -382,7 +382,7 @@ export function matching(rows: ResponseRow[], needWeight: number) {
       const strongEvidence = evidence >= 60 || (w.top50Rank !== null && w.top50Rank <= 50 && w.shortlisted);
       const confirmedNeed = fieldN > 0 && fieldNeed >= 50;
       const gridCell = strongEvidence && confirmedNeed ? "confirmed_priority" : confirmedNeed ? "new_demand" : strongEvidence ? "evidence_led" : "defer";
-      return { workshop: toCatalogueDto(w), fieldNeed, fieldN, linkedItems: linked, gridCell, compositeScore: composite, supplyAction: SUPPLY_ACTION[w.localSupply] ?? "Build" };
+      return { workshop: toCatalogueDto(w), fieldNeed, fieldN, linkedItems: linked, primaryItems: primary, gridCell, compositeScore: composite, supplyAction: SUPPLY_ACTION[w.localSupply] ?? "Build" };
     });
   };
   const rank = (items: ReturnType<typeof compute>) => {

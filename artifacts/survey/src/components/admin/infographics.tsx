@@ -2,37 +2,24 @@ import { motion } from "framer-motion";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from "recharts";
 import {
   Brain, Handshake, Timer, ShieldCheck, FileText, HeartHandshake, LifeBuoy, Lightbulb, Presentation, Search,
-  Cpu, Compass, Users, Landmark, ClipboardCheck, Briefcase, Target, GraduationCap, Route, ClipboardList, CalendarCheck,
+  Target, GraduationCap, Route, ClipboardList, Grid3x3, Scale, Users,
 } from "lucide-react";
 import {
   useGetAdminSummary, getGetAdminSummaryQueryKey, useGetSkillsGap, getGetSkillsGapQueryKey, useGetCourseDemand, getGetCourseDemandQueryKey,
-  useGetTrackRanks, getGetTrackRanksQueryKey, type SurveyPath, type CourseDemandItem, type SkillStats,
+  useGetTrackRanks, getGetTrackRanksQueryKey, useGetMatchingResults, getGetMatchingResultsQueryKey, useGetPreferences, getGetPreferencesQueryKey,
+  type SurveyPath, type CourseDemandItem, type SkillStats, type MatchingItem,
 } from "@workspace/api-client-react";
-import { SKILL_LABELS, GROUP_LABELS, COURSE_LABELS } from "@/lib/survey-definition";
+import { SKILL_LABELS, GROUP_LABELS, COURSE_LABELS, optionLabel } from "@/lib/survey-definition";
 import { cn } from "@/lib/utils";
 import { fmt, Panel, Skel, Err, Empty, Reveal } from "./shared";
-
-/* Palette sampled from the ASDC logo: gold #D0A734 and silver-grey #A1A29D on white. */
-const GOLD = "#D0A734";
-const GOLD_SOFT = "#E7D5A2";
-const SILVER = "#D6D7D2";
-const WHITE = "#FFFFFF";
-const FONT = "IBM Plex Sans Arabic";
-const TIP = { background: "rgba(24,28,33,.92)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 12, color: "#fff", fontFamily: FONT, fontSize: 12, direction: "rtl" as const };
+import { GOLD, GOLD_SOFT, SILVER, WHITE, FONT, TIP, glass, DOMAIN, CELL_AR, Poster } from "./infographic-kit";
+import { DemandPage, EvidencePage, FormatPage, dayWord, type Lead, type DomainMix, type Takeaway } from "./infographic-workshops";
 
 const SKILL_ICONS: Record<string, typeof Brain> = {
   S1: Brain, S2: Handshake, S3: Timer, S4: ShieldCheck, S5: FileText, S6: HeartHandshake, S7: LifeBuoy, S8: Lightbulb, S9: Presentation, S10: Search,
 };
-const DOMAIN: Record<string, { short: string; icon: typeof Brain }> = {
-  G1: { short: "الرقمنة والذكاء الاصطناعي", icon: Cpu },
-  G2: { short: "القيادة والاستراتيجية", icon: Compass },
-  G3: { short: "الموارد البشرية", icon: Users },
-  G4: { short: "المالية والامتثال", icon: Landmark },
-  G5: { short: "المشاريع والجودة", icon: ClipboardCheck },
-  G6: { short: "الجاهزية المهنية", icon: Briefcase },
-};
-
-const glass = "rounded-2xl border border-white/30 bg-white/[.13] shadow-[inset_0_1px_0_0_rgba(255,255,255,.35),0_18px_40px_-24px_rgba(0,0,0,.6)] backdrop-blur-md";
+const MATCH_PARAMS = { needWeight: 40 };
+const TOTAL_PAGES = 4;
 
 export function Infographics({ path }: { path?: SurveyPath }) {
   const params = path ? { path } : undefined;
@@ -40,9 +27,11 @@ export function Infographics({ path }: { path?: SurveyPath }) {
   const sk = useGetSkillsGap({ query: { queryKey: getGetSkillsGapQueryKey() } });
   const co = useGetCourseDemand(params, { query: { queryKey: getGetCourseDemandQueryKey(params) } });
   const tr = useGetTrackRanks(params, { query: { queryKey: getGetTrackRanksQueryKey(params) } });
-  const qs = [sum, sk, co, tr];
+  const ma = useGetMatchingResults(MATCH_PARAMS, { query: { queryKey: getGetMatchingResultsQueryKey(MATCH_PARAMS) } });
+  const pr = useGetPreferences(params, { query: { queryKey: getGetPreferencesQueryKey(params) } });
+  const qs = [sum, sk, co, tr, ma, pr];
   if (qs.some((q) => q.isLoading)) return <Skel rows={5} />;
-  if (qs.some((q) => q.isError) || !sum.data || !sk.data || !co.data || !tr.data) return <Err onRetry={() => qs.forEach((q) => q.refetch())} />;
+  if (qs.some((q) => q.isError) || !sum.data || !sk.data || !co.data || !tr.data || !ma.data || !pr.data) return <Err onRetry={() => qs.forEach((q) => q.refetch())} />;
   const s = sum.data;
   if (!s.completed) return <Empty />;
 
@@ -68,89 +57,118 @@ export function Infographics({ path }: { path?: SurveyPath }) {
   const pathLabel = path === "B2B" ? "المؤسسات (B2B)" : path === "B2C" ? "الأفراد (B2C)" : "كل المشاركين";
   const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
+  /* catalogue join: each survey course -> the workshop whose primary link it is */
+  const matching = ma.data.items;
+  const byCourse = new Map<string, MatchingItem>();
+  matching.forEach((m) => m.primaryItems.forEach((i) => { if (i.startsWith("C") && !byCourse.has(i)) byCourse.set(i, m); }));
+  const lead = (c: CourseDemandItem): Lead => ({ c, w: byCourse.get(c.courseId) });
+  const leaders = [...courses].sort(rank).slice(0, 10).map(lead);
+  const mix: DomainMix[] = domains.map((d) => {
+    const list = courses.filter((c) => c.groupId === d.id);
+    const shown = list.reduce((a, c) => a + c.shown, 0);
+    const bookNow = list.reduce((a, c) => a + c.bookNow, 0);
+    const future = list.reduce((a, c) => a + c.future, 0);
+    const top = d.top.map(lead);
+    return {
+      id: d.id, short: d.short, icon: d.icon, shown, courses: list.length, bookNow, future,
+      notInterested: list.reduce((a, c) => a + c.notInterested, 0),
+      pooled: shown ? ((future + 2 * bookNow) / (2 * shown)) * 100 : null,
+      gate: d.gate && d.gate.respondents > 0 ? d.gate.selectedShare : null,
+      days: top.reduce((a, l) => a + (l.w?.workshop.days ?? 0), 0), top,
+    };
+  });
+  const prefs = pr.data.questions;
+  const topOpt = (q: string) => { const x = prefs.find((p) => p.questionId === q); const o = x && [...x.options].sort((a, b) => b.pct - a.pct)[0]; return o ? optionLabel(q, o.key) : null; };
+  const launchable = leaders.filter((l) => l.w && (l.w.gridCell === "confirmed_priority" || l.w.gridCell === "new_demand")).length;
+  const shortlisted = leaders.filter((l) => l.w?.workshop.shortlisted).length;
+  const format = ["Q19", "Q20", "Q21", "Q22"].map(topOpt).filter((x): x is string => !!x);
+  const takeaways: Takeaway[] = [
+    { title: "الورشة الأعلى طلباً", text: topCourse ? `«${COURSE_LABELS[topCourse.courseId] ?? topCourse.label}» في مجال ${DOMAIN[topCourse.groupId]?.short ?? topCourse.groupLabel}: مؤشر احتياج ${fmt(topCourse.needIndex, 0)} وحجز فوري ${fmt(topCourse.bookNowShare, 0)}% بين ${topCourse.shown} شاهدوها${byCourse.get(topCourse.courseId) ? ` · مدتها ${dayWord(byCourse.get(topCourse.courseId)!.workshop.days)} في الكتالوج` : ""}.` : "لم تُعرض الورش على المشاركين بعد." },
+    { title: "جاهزية الإطلاق", text: leaders.length ? `${launchable} من الورش الـ${leaders.length} الأعلى طلباً تقع في خانتي «أولوية مؤكدة» أو «طلب جديد» بمصفوفة المطابقة، و${shortlisted} منها كانت أصلاً ضمن القائمة المختصرة للدراسة المكتبية.` : "تظهر الجاهزية بعد أولى تقييمات الورش." },
+    { title: "أكبر فجوة مهارية", text: topGap ? `${topGap.label}: فجوة مرجّحة ${fmt(topGap.stat.weightedGap, 2)} و${fmt(topGap.stat.highGapShare, 0)}% من المقيّمين (n=${topGap.stat.n}) يرون فجوة حادة؛ وهي المرشّح الأول لورشة مهارات مستعرضة.` : "لم تُقيَّم المهارات في هذا المسار بعد." },
+    { title: "المسار والصيغة المفضلة", text: [topTrack ? `المسار الأول: ${DOMAIN[topTrack.trackId]?.short ?? topTrack.label} بدرجة ${fmt(topTrack.score, 0)}.` : null, format.length ? `الصيغة الأكثر طلباً: ${format.join(" · ")}.` : null].filter(Boolean).join(" ") || "تظهر الصيغة المفضلة بعد أولى الإجابات." },
+  ];
+  const footer = (
+    <>المصدر: استبانة دراسة التموضع التنافسي والاحتياجات التدريبية في الكويت 2026/2027 · عينة طوعية ({s.completed} رداً مكتملاً) · مؤشر الاحتياج يُحسب بين من عُرضت عليهم الورشة فقط ·
+      الفجوة على مقياس 1–5 · ألوان الإنفوجرافيك مستمدة من شعار المركز (الذهبي والفضي).</>
+  );
+  const posterProps = { total: TOTAL_PAGES, completed: s.completed, today, footer };
+
   return (
     <div className="grid gap-4">
       <Reveal i={0}>
-        <section className="relative overflow-hidden rounded-3xl text-white shadow-2xl" data-testid="infographic-poster" style={{ background: "linear-gradient(160deg, #1b2027, #24303a 55%, #3a3220)" }}>
-          {/* blurred teamwork photo, tinted charcoal + gold so the glass panels and logo colours read on top */}
-          <div aria-hidden className="absolute inset-0 scale-105 bg-cover bg-center" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}infographic-backdrop.jpg)`, filter: "blur(4px) saturate(.85)" }} />
-          <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(160deg, rgba(22,27,33,.86) 0%, rgba(34,44,54,.74) 48%, rgba(74,60,26,.68) 100%)" }} />
-          <div aria-hidden className="absolute -start-24 -top-24 h-80 w-80 rounded-full opacity-40 blur-3xl" style={{ background: GOLD }} />
-          <div aria-hidden className="absolute -bottom-32 end-10 h-96 w-96 rounded-full opacity-25 blur-3xl" style={{ background: SILVER }} />
-
-          <div className="relative p-5 sm:p-7">
-            {/* header strip */}
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white p-1 shadow-lg ring-2 ring-white/40">
-                <img src={`${import.meta.env.BASE_URL}asdc-logo.jpg`} alt="شعار مركز عبدالعزيز حمد الصقر للتنمية والتطوير" className="h-full w-full object-contain" />
-              </div>
-              <div className="min-w-[220px] flex-1">
-                <p className="font-display text-[11px] font-semibold tracking-[.2em]" style={{ color: GOLD_SOFT }}>ASDC · KCCI · إنفوجرافيك النتائج</p>
-                <h2 className="font-display mt-0.5 text-xl font-bold leading-snug sm:text-2xl">أبرز ما كشفته استبانة الاحتياجات التدريبية 2026/2027</h2>
-                <p className="mt-1 text-xs text-white/75">فجوة المهارات والورش الأعلى طلباً في كل مجال · {pathLabel}</p>
-              </div>
-              <div className={cn(glass, "flex items-center gap-3 px-4 py-2.5 text-xs")}>
-                <CalendarCheck className="h-4 w-4" style={{ color: GOLD_SOFT }} />
-                <span><b className="font-display text-base tabular-nums">{s.completed}</b> رداً مكتملاً · حتى {today}</span>
-              </div>
+        <Poster {...posterProps} page={1} title="أبرز ما كشفته استبانة الاحتياجات التدريبية 2026/2027" sub={`فجوة المهارات والورش الأعلى طلباً في كل مجال · ${pathLabel}`} testId="infographic-poster">
+          {/* row A: ring hero + skill-gap bars/lines */}
+          <div className="mt-7 grid gap-5 xl:grid-cols-12">
+            <div className="xl:col-span-7">
+              <RingHero
+                b2b={s.b2b} b2c={s.b2c} completed={s.completed}
+                callouts={[
+                  { title: "العينة الميدانية", lines: [`${s.completed} رداً مكتملاً من ${s.total} بداية`, `${s.b2b} مؤسسة · ${s.b2c} فرداً`, `معدل الإكمال ${fmt(s.completionRate, 0)}%`] },
+                  { title: "أكبر فجوة مهارية", lines: topGap ? [topGap.label, `فجوة مرجّحة ${fmt(topGap.stat.weightedGap, 2)} · ${fmt(topGap.stat.highGapShare, 0)}% فجوة حادة`] : ["لم تُقيَّم المهارات بعد"] },
+                  { title: "الورشة الأعلى طلباً", lines: topCourse ? [COURSE_LABELS[topCourse.courseId] ?? topCourse.label, `مؤشر الاحتياج ${fmt(topCourse.needIndex, 0)} · حجز فوري ${fmt(topCourse.bookNowShare, 0)}%`] : ["لم تُعرض الورش بعد"] },
+                  { title: "المسار الأول 2026/2027", lines: topTrack ? [GROUP_LABELS[topTrack.trackId] ?? topTrack.label, `درجة Borda ${fmt(topTrack.score, 0)} · في المركز الأول عند ${fmt(topTrack.firstPlaceShare, 0)}%`] : ["لم تُرتَّب المسارات بعد"] },
+                ]}
+              />
             </div>
-
-            {/* row A: ring hero + skill-gap bars/lines */}
-            <div className="mt-7 grid gap-5 xl:grid-cols-12">
-              <div className="xl:col-span-7">
-                <RingHero
-                  b2b={s.b2b} b2c={s.b2c} completed={s.completed}
-                  callouts={[
-                    { title: "العينة الميدانية", lines: [`${s.completed} رداً مكتملاً من ${s.total} بداية`, `${s.b2b} مؤسسة · ${s.b2c} فرداً`, `معدل الإكمال ${fmt(s.completionRate, 0)}%`] },
-                    { title: "أكبر فجوة مهارية", lines: topGap ? [topGap.label, `فجوة مرجّحة ${fmt(topGap.stat.weightedGap, 2)} · ${fmt(topGap.stat.highGapShare, 0)}% فجوة حادة`] : ["لم تُقيَّم المهارات بعد"] },
-                    { title: "الورشة الأعلى طلباً", lines: topCourse ? [COURSE_LABELS[topCourse.courseId] ?? topCourse.label, `مؤشر الاحتياج ${fmt(topCourse.needIndex, 0)} · حجز فوري ${fmt(topCourse.bookNowShare, 0)}%`] : ["لم تُعرض الورش بعد"] },
-                    { title: "المسار الأول 2026/2027", lines: topTrack ? [GROUP_LABELS[topTrack.trackId] ?? topTrack.label, `درجة Borda ${fmt(topTrack.score, 0)} · في المركز الأول عند ${fmt(topTrack.firstPlaceShare, 0)}%`] : ["لم تُرتَّب المسارات بعد"] },
-                  ]}
-                />
-              </div>
-              <div className="grid content-start gap-4 xl:col-span-5">
-                <div className={cn(glass, "p-4")}>
-                  <p className="text-sm font-semibold">أكبر أربع فجوات مهارية</p>
-                  <p className="text-[11px] text-white/70">الفجوة المرجّحة = (الأهمية − الأداء) × الأهمية · {pathLabel}</p>
-                  <div className="mt-4 grid gap-3.5">
-                    {topGaps.length ? topGaps.map((g, i) => <GapBar key={g.id} id={g.id} label={g.label} stat={g.stat} max={maxGap} i={i} />)
-                      : <p className="text-xs text-white/70">لا تقييمات مهارات في هذا المسار بعد.</p>}
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <MiniLine title="الأهمية مقابل الأداء" sub={`متوسط 1–5 لكل مهارة · ${pathLabel}`} data={ipaData} domain={[1, 5]}
-                    lines={[{ key: "imp", label: "الأهمية", color: WHITE }, { key: "perf", label: "الأداء", color: GOLD }]} />
-                  <MiniLine title="فجوة المؤسسات مقابل الأفراد" sub="الفجوة المرجّحة لكل مهارة · كل الردود" data={pathData}
-                    lines={[{ key: "b2b", label: "المؤسسات B2B", color: WHITE }, { key: "b2c", label: "الأفراد B2C", color: SILVER }]} />
+            <div className="grid content-start gap-4 xl:col-span-5">
+              <div className={cn(glass, "p-4")}>
+                <p className="text-sm font-semibold">أكبر أربع فجوات مهارية</p>
+                <p className="text-[11px] text-white/70">الفجوة المرجّحة = (الأهمية − الأداء) × الأهمية · {pathLabel}</p>
+                <div className="mt-4 grid gap-3.5">
+                  {topGaps.length ? topGaps.map((g, i) => <GapBar key={g.id} id={g.id} label={g.label} stat={g.stat} max={maxGap} i={i} />)
+                    : <p className="text-xs text-white/70">لا تقييمات مهارات في هذا المسار بعد.</p>}
                 </div>
               </div>
-            </div>
-
-            {/* row B: layered bars per domain + top workshop cards */}
-            <div className="mt-5 grid gap-5 xl:grid-cols-12">
-              <div className={cn(glass, "p-4 xl:col-span-5")}>
-                <p className="text-sm font-semibold">الورش الثلاث الأعلى طلباً في كل مجال</p>
-                <p className="text-[11px] text-white/70">مؤشر الاحتياج (0–100) · العمود الأعرض هو الورشة الأولى في المجال، ثم الثانية فالثالثة</p>
-                <LayerBars domains={domains} />
-              </div>
-              <div className="xl:col-span-7">
-                <TagCards domains={domains} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <MiniLine title="الأهمية مقابل الأداء" sub={`متوسط 1–5 لكل مهارة · ${pathLabel}`} data={ipaData} domain={[1, 5]}
+                  lines={[{ key: "imp", label: "الأهمية", color: WHITE }, { key: "perf", label: "الأداء", color: GOLD }]} />
+                <MiniLine title="فجوة المؤسسات مقابل الأفراد" sub="الفجوة المرجّحة لكل مهارة · كل الردود" data={pathData}
+                  lines={[{ key: "b2b", label: "المؤسسات B2B", color: WHITE }, { key: "b2c", label: "الأفراد B2C", color: SILVER }]} />
               </div>
             </div>
-
-            <p className="mt-6 text-[11px] leading-relaxed text-white/65">
-              المصدر: استبانة دراسة التموضع التنافسي والاحتياجات التدريبية في الكويت 2026/2027 · عينة طوعية ({s.completed} رداً مكتملاً) · مؤشر الاحتياج يُحسب بين من عُرضت عليهم الورشة فقط ·
-              الفجوة على مقياس 1–5 · ألوان الإنفوجرافيك مستمدة من شعار المركز (الذهبي والفضي).
-            </p>
           </div>
-        </section>
+
+          {/* row B: layered bars per domain + top workshop cards */}
+          <div className="mt-5 grid gap-5 xl:grid-cols-12">
+            <div className={cn(glass, "p-4 xl:col-span-5")}>
+              <p className="text-sm font-semibold">الورش الثلاث الأعلى طلباً في كل مجال</p>
+              <p className="text-[11px] text-white/70">مؤشر الاحتياج (0–100) · العمود الأعرض هو الورشة الأولى في المجال، ثم الثانية فالثالثة</p>
+              <LayerBars domains={domains} />
+            </div>
+            <div className="xl:col-span-7">
+              <TagCards domains={domains} />
+            </div>
+          </div>
+        </Poster>
       </Reveal>
+
       <Reveal i={1}>
-        <Panel title="كيف تقرأ هذا الإنفوجرافيك؟" sub="ثلاثة مقاييس تتكرر في اللوحة">
-          <div className="grid gap-3 text-sm sm:grid-cols-3">
+        <Poster {...posterProps} page={2} position="center 30%" title="الطلب على الورش تحت المجهر" sub={`الورش العشر الأعلى طلباً، ومزيج النوايا في كل مجال، وما يقوله الكتالوج عن مددها ومستوياتها · ${pathLabel}`} testId="infographic-poster-2">
+          <DemandPage leaders={leaders} courses={courses} mix={mix} catalogueCount={co.data.items.length} pathLabel={pathLabel} />
+        </Poster>
+      </Reveal>
+
+      <Reveal i={2}>
+        <Poster {...posterProps} page={3} position="center 70%" title="الورش المطلوبة في ميزان الأدلة" sub="أين يلتقي الطلب الميداني مع أدلة الدراسة المكتبية؟ ملامح الورش المطلوبة وبطاقات تعريفية لأعلى ثلاث · كل الردود" testId="infographic-poster-3">
+          <EvidencePage matching={matching} />
+        </Poster>
+      </Reveal>
+
+      <Reveal i={3}>
+        <Poster {...posterProps} page={4} position="center 55%" title="أي مسار أولاً، وكيف يريدون الورشة؟" sub={`ترتيب المسارات الستة، والصيغة المفضلة للتنفيذ، وخلاصة النتائج في أربع نقاط · ${pathLabel}`} testId="infographic-poster-4">
+          <FormatPage tracks={tracks} prefs={prefs} pathLabel={pathLabel} takeaways={takeaways} />
+        </Poster>
+      </Reveal>
+
+      <Reveal i={4}>
+        <Panel title="كيف تقرأ هذا الإنفوجرافيك؟" sub="خمسة مقاييس تتكرر في اللوحات الأربع">
+          <div className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5">
             <Def icon={Target} title="الفجوة المرجّحة" text="الفرق بين أهمية المهارة ومستوى الأداء الحالي مضروباً في الأهمية؛ كلما ارتفعت كان التدخل التدريبي أكثر إلحاحاً. «الفجوة الحادة» نسبة من بلغت فجوتهم درجتين فأكثر." />
             <Def icon={GraduationCap} title="مؤشر الاحتياج" text="متوسط اختيارات المشاركين (0 غير مهتم، 1 مهتم مستقبلاً، 2 أرغب بالحجز فوراً) ÷ 2 × 100، محسوباً فقط بين من عُرضت عليهم الورشة." />
             <Def icon={Route} title="درجة Borda" text="كل مشارك يرتّب المسارات الستة؛ يحصل المسار على نقاط بحسب مركزه وتُعاير الدرجة على 0–100. تُعرض فقط المسارات الستة الحالية." />
+            <Def icon={Grid3x3} title="خانة المصفوفة" text={`تقاطع الطلب الميداني (50 فأكثر) مع قوة الأدلة المكتبية: ${CELL_AR.confirmed_priority} حين يلتقيان، ${CELL_AR.new_demand} حين يطلبه الميدان وحده، ${CELL_AR.evidence_led} حين ترجّحه الأدلة وحدها، وإلا فالتأجيل.`} />
+            <Def icon={Scale} title="الدرجة المركبة" text="ترتيب ورش الكتالوج بوزن 40% للاحتياج الميداني و30% للأدلة المكتبية و20% للملاءمة الاستراتيجية و10% لجاهزية العرض المحلي؛ تُحسب على كل الردود بصرف النظر عن عامل التصفية." />
           </div>
         </Panel>
       </Reveal>

@@ -15,6 +15,8 @@ export interface MatchingItem {
   fieldNeed: number;
   fieldN: number;
   linkedItems: string[];
+  /** Survey items whose primary catalogue link is this workshop (the items used for field-need scoring) */
+  primaryItems: string[];
   gridCell: MatchingItemGridCell;
   compositeScore: number;
   rank: number;

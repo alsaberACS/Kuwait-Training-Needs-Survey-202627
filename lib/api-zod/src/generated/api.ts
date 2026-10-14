@@ -476,6 +476,7 @@ export const GetMatchingResultsResponse = zod.object({
   "fieldNeed": zod.number().describe('0-100 confirmed field need from linked survey items'),
   "fieldN": zod.number().int(),
   "linkedItems": zod.array(zod.string()),
+  "primaryItems": zod.array(zod.string()).describe('Survey items whose primary catalogue link is this workshop (the items used for field-need scoring)'),
   "gridCell": zod.enum(['confirmed_priority', 'new_demand', 'evidence_led', 'defer']),
   "compositeScore": zod.number(),
   "rank": zod.number().int(),

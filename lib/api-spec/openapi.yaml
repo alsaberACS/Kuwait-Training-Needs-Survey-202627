@@ -876,6 +876,11 @@ components:
           type: array
           items:
             type: string
+        primaryItems:
+          type: array
+          description: Survey items whose primary catalogue link is this workshop (the items used for field-need scoring)
+          items:
+            type: string
         gridCell:
           type: string
           enum: [confirmed_priority, new_demand, evidence_led, defer]
@@ -889,7 +894,7 @@ components:
         supplyAction:
           type: string
           enum: [Build, Expand, Select]
-      required: [workshop, fieldNeed, fieldN, linkedItems, gridCell, compositeScore, rank, rankShift, supplyAction]
+      required: [workshop, fieldNeed, fieldN, linkedItems, primaryItems, gridCell, compositeScore, rank, rankShift, supplyAction]
     MatchingReport:
       type: object
       properties:
