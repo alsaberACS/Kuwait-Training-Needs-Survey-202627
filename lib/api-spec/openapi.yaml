@@ -236,6 +236,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CourseDemandReport"
+  /admin/training-pathways:
+    get:
+      operationId: getTrainingPathways
+      tags: [admin]
+      summary: Six training domains with their leading workshops and interested respondents' delivery preferences
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Path-filtered training pathway board, including empty domains
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrainingPathwaysReport"
+        "400":
+          description: Invalid path filter
+        "401":
+          description: Admin access required
   /admin/track-ranks:
     get:
       operationId: getTrackRanks
@@ -685,6 +705,60 @@ components:
           items:
             $ref: "#/components/schemas/CourseDemandItem"
       required: [groups, items]
+    PathwayWorkshop:
+      type: object
+      properties:
+        demand:
+          $ref: "#/components/schemas/CourseDemandItem"
+        interestedRespondents:
+          type: integer
+          description: Completed respondents rating this course 1 or 2. Preferences below use only this cohort.
+        preferences:
+          type: array
+          description: Q19-Q23 and Q26 within the interested cohort. Each question has its own answered denominator; all ties are retained. These are respondents' general preferences, not causal explanations of course demand.
+          items:
+            $ref: "#/components/schemas/QuestionBreakdown"
+        catalogue:
+          $ref: "#/components/schemas/CatalogueWorkshop"
+      required: [demand, interestedRespondents, preferences]
+    TrainingPathwayDomain:
+      type: object
+      properties:
+        groupId:
+          type: string
+        label:
+          type: string
+        gate:
+          $ref: "#/components/schemas/CourseDemandGroup"
+        evaluatedCourses:
+          type: integer
+        interestedCourses:
+          type: integer
+          description: Courses with at least one valid rating of 1 or 2
+        evaluatedRespondents:
+          type: integer
+          description: Distinct completed respondents with at least one valid course rating in this domain
+        topCourses:
+          type: array
+          description: Up to three interested courses ordered by need index, book-now share, shown count, then stable numeric course id. Unshown or entirely uninterested courses never fill empty places.
+          items:
+            $ref: "#/components/schemas/PathwayWorkshop"
+      required: [groupId, label, gate, evaluatedCourses, interestedCourses, evaluatedRespondents, topCourses]
+    TrainingPathwaysReport:
+      type: object
+      properties:
+        respondents:
+          type: integer
+        courseCount:
+          type: integer
+        evaluatedCourses:
+          type: integer
+        domains:
+          type: array
+          description: All six current survey domains G1-G6, even with no responses
+          items:
+            $ref: "#/components/schemas/TrainingPathwayDomain"
+      required: [respondents, courseCount, evaluatedCourses, domains]
     TrackRankItem:
       type: object
       properties:

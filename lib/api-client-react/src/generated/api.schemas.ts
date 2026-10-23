@@ -192,6 +192,69 @@ export interface CourseDemandReport {
   items: CourseDemandItem[];
 }
 
+export interface QuestionBreakdown {
+  questionId: string;
+  label: string;
+  respondents: number;
+  options: CountItem[];
+}
+
+export type CatalogueWorkshopLocalSupply = typeof CatalogueWorkshopLocalSupply[keyof typeof CatalogueWorkshopLocalSupply];
+
+
+export const CatalogueWorkshopLocalSupply = {
+  None: 'None',
+  Emerging: 'Emerging',
+  Established: 'Established',
+} as const;
+
+export interface CatalogueWorkshop {
+  id: string;
+  titleEn: string;
+  titleAr: string;
+  categoryId: number;
+  categoryLabel: string;
+  tier: string;
+  days: number;
+  top50Rank: number | null;
+  evidenceScore: number;
+  marketDemandPct: number;
+  kuwaitPlansCount: number;
+  localSupply: CatalogueWorkshopLocalSupply;
+  audience: string[];
+  shortlisted: boolean;
+}
+
+export interface PathwayWorkshop {
+  demand: CourseDemandItem;
+  /** Completed respondents rating this course 1 or 2. Preferences below use only this cohort. */
+  interestedRespondents: number;
+  /** Q19-Q23 and Q26 within the interested cohort. Each question has its own answered denominator; all ties are retained. These are respondents' general preferences, not causal explanations of course demand. */
+  preferences: QuestionBreakdown[];
+  catalogue?: CatalogueWorkshop;
+}
+
+export interface TrainingPathwayDomain {
+  groupId: string;
+  label: string;
+  gate: CourseDemandGroup;
+  evaluatedCourses: number;
+  /** Courses with at least one valid rating of 1 or 2 */
+  interestedCourses: number;
+  /** Distinct completed respondents with at least one valid course rating in this domain */
+  evaluatedRespondents: number;
+  /** Up to three interested courses ordered by need index, book-now share, shown count, then stable numeric course id. Unshown or entirely uninterested courses never fill empty places. */
+  topCourses: PathwayWorkshop[];
+}
+
+export interface TrainingPathwaysReport {
+  respondents: number;
+  courseCount: number;
+  evaluatedCourses: number;
+  /** All six current survey domains G1-G6, even with no responses */
+  domains: TrainingPathwayDomain[];
+}
+
 export interface TrackRankItem {
   trackId: string;
   label: string;
@@ -206,13 +269,6 @@ export interface TrackRankItem {
 
 export interface TrackRankReport {
   items: TrackRankItem[];
-}
-
-export interface QuestionBreakdown {
-  questionId: string;
-  label: string;
-  respondents: number;
-  options: CountItem[];
 }
 
 export interface PreferenceReport {
@@ -269,32 +325,6 @@ export interface SegmentDimension {
 export interface SegmentReport {
   respondents: number;
   dimensions: SegmentDimension[];
-}
-
-export type CatalogueWorkshopLocalSupply = typeof CatalogueWorkshopLocalSupply[keyof typeof CatalogueWorkshopLocalSupply];
-
-
-export const CatalogueWorkshopLocalSupply = {
-  None: 'None',
-  Emerging: 'Emerging',
-  Established: 'Established',
-} as const;
-
-export interface CatalogueWorkshop {
-  id: string;
-  titleEn: string;
-  titleAr: string;
-  categoryId: number;
-  categoryLabel: string;
-  tier: string;
-  days: number;
-  top50Rank: number | null;
-  evidenceScore: number;
-  marketDemandPct: number;
-  kuwaitPlansCount: number;
-  localSupply: CatalogueWorkshopLocalSupply;
-  audience: string[];
-  shortlisted: boolean;
 }
 
 export type MatchingItemGridCell = typeof MatchingItemGridCell[keyof typeof MatchingItemGridCell];
@@ -363,6 +393,10 @@ export const ListAdminResponsesStatus = {
 } as const;
 
 export type GetCourseDemandParams = {
+path?: PathFilterParameter;
+};
+
+export type GetTrainingPathwaysParams = {
 path?: PathFilterParameter;
 };
 

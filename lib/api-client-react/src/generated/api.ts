@@ -32,6 +32,7 @@ import type {
   GetMatchingResultsParams,
   GetPreferencesParams,
   GetTrackRanksParams,
+  GetTrainingPathwaysParams,
   HealthStatus,
   ListAdminResponsesParams,
   MatchingReport,
@@ -41,6 +42,7 @@ import type {
   SkillsGapReport,
   SurveyResponse,
   TrackRankReport,
+  TrainingPathwaysReport,
   UpdateResponseRequest
 } from './api.schemas';
 
@@ -884,6 +886,90 @@ export function useGetCourseDemand<TData = Awaited<ReturnType<typeof getCourseDe
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCourseDemandQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTrainingPathwaysUrl = (params?: GetTrainingPathwaysParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/training-pathways?${stringifiedParams}` : `/api/admin/training-pathways`
+}
+
+/**
+ * @summary Six training domains with their leading workshops and interested respondents' delivery preferences
+ */
+export const getTrainingPathways = async (params?: GetTrainingPathwaysParams, options?: Parameters<typeof customFetch>[1]): Promise<TrainingPathwaysReport> => {
+
+  return customFetch<TrainingPathwaysReport>(getGetTrainingPathwaysUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTrainingPathwaysQueryKey = (params?: GetTrainingPathwaysParams,) => {
+    return [
+    `/api/admin/training-pathways`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetTrainingPathwaysQueryOptions = <TData = Awaited<ReturnType<typeof getTrainingPathways>>, TError = ErrorType<void>>(params?: GetTrainingPathwaysParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrainingPathways>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTrainingPathwaysQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTrainingPathways>>> = ({ signal }) => getTrainingPathways(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTrainingPathways>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTrainingPathwaysQueryResult = NonNullable<Awaited<ReturnType<typeof getTrainingPathways>>>
+export type GetTrainingPathwaysQueryError = ErrorType<void>
+
+
+/**
+ * @summary Six training domains with their leading workshops and interested respondents' delivery preferences
+ */
+
+export function useGetTrainingPathways<TData = Awaited<ReturnType<typeof getTrainingPathways>>, TError = ErrorType<void>>(
+ params?: GetTrainingPathwaysParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTrainingPathways>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTrainingPathwaysQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

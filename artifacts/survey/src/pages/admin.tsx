@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles,
+  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route,
 } from "lucide-react";
 import { setAuthTokenGetter, useVerifyAdminKey, useExportResponsesCsv, getExportResponsesCsvQueryKey, type SurveyPath } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
@@ -16,13 +16,15 @@ import { Prefs } from "@/components/admin/prefs";
 import { Segments } from "@/components/admin/segments";
 import { Matching } from "@/components/admin/matching";
 import { Responses } from "@/components/admin/responses";
+import { TrainingPathways } from "@/components/admin/training-pathways";
 
 setAuthTokenGetter(() => sessionStorage.getItem("adminKey"));
 
-type Tab = "overview" | "infographics" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
+type Tab = "overview" | "infographics" | "pathways" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
 const TABS: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "infographics", label: "إنفوجرافيك", icon: Sparkles },
+  { id: "pathways", label: "لوحة المسارات التدريبية", icon: Route },
   { id: "skills", label: "فجوة المهارات", icon: Activity },
   { id: "courses", label: "الطلب على الدورات", icon: GraduationCap },
   { id: "tracks", label: "المسارات المستقبلية", icon: ListOrdered },
@@ -91,28 +93,28 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     a.click();
     URL.revokeObjectURL(a.href);
   };
-  const showPath = ["overview", "infographics", "courses", "tracks", "prefs"].includes(tab);
+  const showPath = ["overview", "infographics", "pathways", "courses", "tracks", "prefs"].includes(tab);
   const chapter = CHAPTERS[tab];
   return (
     <div className="min-h-[100dvh] bg-background lg:grid lg:grid-cols-[250px_1fr]">
-      <aside className={cn("fixed inset-y-0 start-0 z-50 w-[250px] bg-sidebar text-sidebar-foreground transition-transform lg:static lg:translate-x-0",
+      <aside className={cn("fixed inset-y-0 start-0 z-50 flex w-[250px] flex-col bg-sidebar lg:sticky lg:top-0 lg:h-[100dvh] text-sidebar-foreground transition-transform lg:translate-x-0",
         navOpen ? "translate-x-0" : "translate-x-full")}>
         <div className="h-2 sadu opacity-70" />
-        <div className="p-5">
+        <div className="shrink-0 p-5">
           <p className="font-display text-xs font-semibold tracking-wider text-sidebar-primary">ASDC · KCCI</p>
           <p className="mt-1 text-sm font-semibold leading-relaxed">دراسة الاحتياجات التدريبية 2026/2027</p>
         </div>
-        <nav className="grid gap-0.5 px-3">
+        <nav className="grid min-h-0 flex-1 content-start gap-0.5 overflow-y-auto px-3 pb-3">
           {TABS.map((t) => (
             <button key={t.id} onClick={() => { setTab(t.id); setNavOpen(false); }} data-testid={`tab-${t.id}`}
-              className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+              className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-start text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                 tab === t.id ? "bg-sidebar-accent font-semibold text-white" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60")}>
-              <span className={cn("font-display w-4 text-center text-[11px] tabular-nums", tab === t.id ? "text-sidebar-primary" : "text-sidebar-foreground/40")}>{CHAPTERS[t.id].number}</span>
-              <t.icon className={cn("h-4 w-4", tab === t.id && "text-sidebar-primary")} />{t.label}
+              <span className={cn("font-display w-5 shrink-0 text-center text-[11px] tabular-nums", tab === t.id ? "text-sidebar-primary" : "text-sidebar-foreground/40")}>{CHAPTERS[t.id].number}</span>
+              <t.icon className={cn("h-4 w-4 shrink-0", tab === t.id && "text-sidebar-primary")} />{t.label}
             </button>
           ))}
         </nav>
-        <div className="absolute inset-x-3 bottom-4 grid gap-1">
+        <div className="grid shrink-0 gap-1 border-t border-sidebar-border px-3 pb-4 pt-3">
           <button onClick={download} disabled={csv.isFetching} className="flex items-center gap-3 rounded-lg bg-sidebar-primary px-3 py-2.5 text-sm font-semibold text-sidebar-primary-foreground" data-testid="button-export-csv">
             {csv.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} تصدير CSV
           </button>
@@ -142,6 +144,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
           {tab === "overview" && <Overview path={path} />}
           {tab === "infographics" && <Infographics path={path} />}
+          {tab === "pathways" && <TrainingPathways path={path} />}
           {tab === "skills" && <SkillsGap />}
           {tab === "courses" && <Courses path={path} />}
           {tab === "tracks" && <Tracks path={path} />}

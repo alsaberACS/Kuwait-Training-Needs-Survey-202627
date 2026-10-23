@@ -369,6 +369,76 @@ export const GetCourseDemandResponse = zod.object({
 
 
 /**
+ * @summary Six training domains with their leading workshops and interested respondents' delivery preferences
+ */
+export const GetTrainingPathwaysQueryParams = zod.object({
+  "path": zod.enum(['B2B', 'B2C']).optional()
+})
+
+export const GetTrainingPathwaysResponse = zod.object({
+  "respondents": zod.number().int(),
+  "courseCount": zod.number().int(),
+  "evaluatedCourses": zod.number().int(),
+  "domains": zod.array(zod.object({
+  "groupId": zod.string(),
+  "label": zod.string(),
+  "gate": zod.object({
+  "groupId": zod.string(),
+  "label": zod.string(),
+  "respondents": zod.number().int().describe('Respondents who answered the gate question'),
+  "selected": zod.number().int(),
+  "selectedShare": zod.number().describe('selected / respondents x 100')
+}).describe('How often each course group was chosen in the Q25G gate question.'),
+  "evaluatedCourses": zod.number().int(),
+  "interestedCourses": zod.number().int().describe('Courses with at least one valid rating of 1 or 2'),
+  "evaluatedRespondents": zod.number().int().describe('Distinct completed respondents with at least one valid course rating in this domain'),
+  "topCourses": zod.array(zod.object({
+  "demand": zod.object({
+  "courseId": zod.string(),
+  "label": zod.string(),
+  "groupId": zod.string(),
+  "groupLabel": zod.string(),
+  "shown": zod.number().int(),
+  "notInterested": zod.number().int(),
+  "future": zod.number().int(),
+  "bookNow": zod.number().int(),
+  "needIndex": zod.number().describe('0-100 (mean of 0/1/2 codes / 2 x 100)'),
+  "bookNowShare": zod.number()
+}),
+  "interestedRespondents": zod.number().int().describe('Completed respondents rating this course 1 or 2. Preferences below use only this cohort.'),
+  "preferences": zod.array(zod.object({
+  "questionId": zod.string(),
+  "label": zod.string(),
+  "respondents": zod.number().int(),
+  "options": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "pct": zod.number()
+}))
+})).describe('Q19-Q23 and Q26 within the interested cohort. Each question has its own answered denominator; all ties are retained. These are respondents\' general preferences, not causal explanations of course demand.'),
+  "catalogue": zod.object({
+  "id": zod.string(),
+  "titleEn": zod.string(),
+  "titleAr": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryLabel": zod.string(),
+  "tier": zod.string(),
+  "days": zod.number().int(),
+  "top50Rank": zod.number().int().nullable(),
+  "evidenceScore": zod.number(),
+  "marketDemandPct": zod.number(),
+  "kuwaitPlansCount": zod.number().int(),
+  "localSupply": zod.enum(['None', 'Emerging', 'Established']),
+  "audience": zod.array(zod.string()),
+  "shortlisted": zod.boolean()
+}).optional()
+})).describe('Up to three interested courses ordered by need index, book-now share, shown count, then stable numeric course id. Unshown or entirely uninterested courses never fill empty places.')
+})).describe('All six current survey domains G1-G6, even with no responses')
+})
+
+
+/**
  * @summary Future-track ranking results
  */
 export const GetTrackRanksQueryParams = zod.object({

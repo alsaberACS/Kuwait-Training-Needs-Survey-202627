@@ -1,0 +1,11 @@
+.tp-orbit { animation: tp-spin 120s linear infinite; transform-origin: 50% 50%; transform-box: fill-box; }
+.tp-pulse { animation: tp-pulse 3.2s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+.tp-dash { stroke-dasharray: 3 6; animation: tp-dash 14s linear infinite; }
+.tp-node:focus-visible, .tp-focus:focus-visible { outline: 2px solid #E7D5A2; outline-offset: 3px; }
+@keyframes tp-spin { to { transform: rotate(360deg); } }
+@keyframes tp-pulse { 0% { transform: scale(.85); opacity: .7 } 100% { transform: scale(1.5); opacity: 0 } }
+@keyframes tp-dash { to { stroke-dashoffset: -180; } }
+@media (prefers-reduced-motion: reduce) {
+  .tp-orbit, .tp-pulse, .tp-dash { animation: none !important; }
+}
+.tp-dots { background-image: radial-gradient(rgba(231,213,162,.35) 1px, transparent 1.4px); background-size: 14px 14px; mask-image: linear-gradient(120deg, transparent 20%, #000 60%, transparent 95%); }
