@@ -256,6 +256,35 @@ paths:
           description: Invalid path filter
         "401":
           description: Admin access required
+  /admin/course-insight:
+    get:
+      operationId: getCourseInsight
+      tags: [admin]
+      summary: Selected workshop demand, domain position and interested respondents' programme preferences
+      security:
+        - AdminKey: []
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^C[1-9][0-9]*$"
+            maxLength: 16
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Read-only insight report for any survey workshop, including unobserved and zero-interest workshops
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseInsightReport"
+        "400":
+          description: Invalid course identifier or path filter
+        "401":
+          description: Admin access required
+        "404":
+          description: Unknown survey workshop
   /admin/track-ranks:
     get:
       operationId: getTrackRanks
@@ -759,6 +788,50 @@ components:
           items:
             $ref: "#/components/schemas/TrainingPathwayDomain"
       required: [respondents, courseCount, evaluatedCourses, domains]
+    CourseInsightSlice:
+      type: object
+      description: Course ratings within one respondent path and the selected report scope; never includes identities.
+      properties:
+        path:
+          $ref: "#/components/schemas/SurveyPath"
+        shown:
+          type: integer
+        interested:
+          type: integer
+        bookNow:
+          type: integer
+        needIndex:
+          type: [number, "null"]
+          description: Null when nobody in this path rated the selected course.
+      required: [path, shown, interested, bookNow, needIndex]
+    CourseInsightReport:
+      type: object
+      properties:
+        respondents:
+          type: integer
+          description: Complete responses in the selected path, not the denominator for course demand.
+        state:
+          type: string
+          enum: [not_evaluated, no_interest, interested]
+        workshop:
+          $ref: "#/components/schemas/PathwayWorkshop"
+        domain:
+          $ref: "#/components/schemas/CourseDemandGroup"
+        domainCourseCount:
+          type: integer
+        domainEvaluatedCourses:
+          type: integer
+        domainRank:
+          type: [integer, "null"]
+          description: Competition rank among evaluated courses in this domain by need index, book-now share, then shown count. Equal metrics share rank. Null for unobserved courses.
+        rankTied:
+          type: boolean
+        byPath:
+          type: array
+          description: B2B and B2C course metrics within the report scope; an excluded path has no data, not evidence of no demand.
+          items:
+            $ref: "#/components/schemas/CourseInsightSlice"
+      required: [respondents, state, workshop, domain, domainCourseCount, domainEvaluatedCourses, domainRank, rankTied, byPath]
     TrackRankItem:
       type: object
       properties:

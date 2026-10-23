@@ -439,6 +439,86 @@ export const GetTrainingPathwaysResponse = zod.object({
 
 
 /**
+ * @summary Selected workshop demand, domain position and interested respondents' programme preferences
+ */
+export const getCourseInsightQueryCourseIdMax = 16;
+
+
+export const getCourseInsightQueryCourseIdRegExp = new RegExp('^C[1-9][0-9]*$');
+
+
+export const GetCourseInsightQueryParams = zod.object({
+  "courseId": zod.coerce.string().max(getCourseInsightQueryCourseIdMax).regex(getCourseInsightQueryCourseIdRegExp),
+  "path": zod.enum(['B2B', 'B2C']).optional()
+})
+
+export const GetCourseInsightResponse = zod.object({
+  "respondents": zod.number().int().describe('Complete responses in the selected path, not the denominator for course demand.'),
+  "state": zod.enum(['not_evaluated', 'no_interest', 'interested']),
+  "workshop": zod.object({
+  "demand": zod.object({
+  "courseId": zod.string(),
+  "label": zod.string(),
+  "groupId": zod.string(),
+  "groupLabel": zod.string(),
+  "shown": zod.number().int(),
+  "notInterested": zod.number().int(),
+  "future": zod.number().int(),
+  "bookNow": zod.number().int(),
+  "needIndex": zod.number().describe('0-100 (mean of 0/1/2 codes / 2 x 100)'),
+  "bookNowShare": zod.number()
+}),
+  "interestedRespondents": zod.number().int().describe('Completed respondents rating this course 1 or 2. Preferences below use only this cohort.'),
+  "preferences": zod.array(zod.object({
+  "questionId": zod.string(),
+  "label": zod.string(),
+  "respondents": zod.number().int(),
+  "options": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "count": zod.number().int(),
+  "pct": zod.number()
+}))
+})).describe('Q19-Q23 and Q26 within the interested cohort. Each question has its own answered denominator; all ties are retained. These are respondents\' general preferences, not causal explanations of course demand.'),
+  "catalogue": zod.object({
+  "id": zod.string(),
+  "titleEn": zod.string(),
+  "titleAr": zod.string(),
+  "categoryId": zod.number().int(),
+  "categoryLabel": zod.string(),
+  "tier": zod.string(),
+  "days": zod.number().int(),
+  "top50Rank": zod.number().int().nullable(),
+  "evidenceScore": zod.number(),
+  "marketDemandPct": zod.number(),
+  "kuwaitPlansCount": zod.number().int(),
+  "localSupply": zod.enum(['None', 'Emerging', 'Established']),
+  "audience": zod.array(zod.string()),
+  "shortlisted": zod.boolean()
+}).optional()
+}),
+  "domain": zod.object({
+  "groupId": zod.string(),
+  "label": zod.string(),
+  "respondents": zod.number().int().describe('Respondents who answered the gate question'),
+  "selected": zod.number().int(),
+  "selectedShare": zod.number().describe('selected / respondents x 100')
+}).describe('How often each course group was chosen in the Q25G gate question.'),
+  "domainCourseCount": zod.number().int(),
+  "domainEvaluatedCourses": zod.number().int(),
+  "domainRank": zod.number().int().nullable().describe('Competition rank among evaluated courses in this domain by need index, book-now share, then shown count. Equal metrics share rank. Null for unobserved courses.'),
+  "rankTied": zod.boolean(),
+  "byPath": zod.array(zod.object({
+  "path": zod.enum(['B2B', 'B2C']),
+  "shown": zod.number().int(),
+  "interested": zod.number().int(),
+  "bookNow": zod.number().int(),
+  "needIndex": zod.number().nullable().describe('Null when nobody in this path rated the selected course.')
+}).describe('Course ratings within one respondent path and the selected report scope; never includes identities.')).describe('B2B and B2C course metrics within the report scope; an excluded path has no data, not evidence of no demand.')
+})
+
+
+/**
  * @summary Future-track ranking results
  */
 export const GetTrackRanksQueryParams = zod.object({

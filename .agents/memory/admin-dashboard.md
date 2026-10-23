@@ -21,6 +21,10 @@ description: Non-obvious rules for the /admin results dashboard — RTL chart qu
 
 **Catalogue joins from the client.** Matching items list every linked survey item (courses, skills, tracks, retired R-items), so joining a course to "its" workshop needs the primary link, exposed as primaryItems on the matching DTO; do not guess from linkedItems. Field need in the matching report also comes from skills and tracks, so "workshops the field confirmed" can exceed the number of courses actually shown.
 
-**Separate visual references.** The training-pathway board follows the newer city-photo references with connected circles, fine lines and motion; it is not a replacement or redesign of the existing infographic.
-**Why:** the user explicitly asked to retain the existing infographic and supplied separate references for the additional board.
-**How to apply:** keep the two views' visual treatments separate when revising either one.
+**Separate visual references.** The training-pathway board and single-course infographic follow the newer city-photo references with connected circles, fine lines and motion; they are not replacements or redesigns of the existing infographic.
+**Why:** the user explicitly asked to retain the existing infographic and continues to request additional tabs with their own reference images.
+**How to apply:** preserve each view's visual treatment when revising another.
+
+**Animated callout positioning.** Keep static anchor translation separate from animation transforms, and let layout rules—not decorative helper classes—own positioning.
+**Why:** Framer Motion can replace an inline `transform`, while unlayered decorative CSS can override Tailwind positioning utilities; together they can move or clip infographic callouts even when the metric data is correct.
+**How to apply:** use a separate positioning wrapper or the CSS `translate` property for anchors, and check all callouts after their entrance animation completes.

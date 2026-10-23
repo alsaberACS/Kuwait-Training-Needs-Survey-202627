@@ -26,9 +26,11 @@ import type {
   CatalogueWorkshop,
   CompleteResponseRequest,
   CourseDemandReport,
+  CourseInsightReport,
   CreateResponseRequest,
   GetAdminSummaryParams,
   GetCourseDemandParams,
+  GetCourseInsightParams,
   GetMatchingResultsParams,
   GetPreferencesParams,
   GetTrackRanksParams,
@@ -970,6 +972,90 @@ export function useGetTrainingPathways<TData = Awaited<ReturnType<typeof getTrai
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetTrainingPathwaysQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCourseInsightUrl = (params: GetCourseInsightParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/course-insight?${stringifiedParams}` : `/api/admin/course-insight`
+}
+
+/**
+ * @summary Selected workshop demand, domain position and interested respondents' programme preferences
+ */
+export const getCourseInsight = async (params: GetCourseInsightParams, options?: Parameters<typeof customFetch>[1]): Promise<CourseInsightReport> => {
+
+  return customFetch<CourseInsightReport>(getGetCourseInsightUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCourseInsightQueryKey = (params?: GetCourseInsightParams,) => {
+    return [
+    `/api/admin/course-insight`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCourseInsightQueryOptions = <TData = Awaited<ReturnType<typeof getCourseInsight>>, TError = ErrorType<void>>(params: GetCourseInsightParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCourseInsight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCourseInsightQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCourseInsight>>> = ({ signal }) => getCourseInsight(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCourseInsight>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCourseInsightQueryResult = NonNullable<Awaited<ReturnType<typeof getCourseInsight>>>
+export type GetCourseInsightQueryError = ErrorType<void>
+
+
+/**
+ * @summary Selected workshop demand, domain position and interested respondents' programme preferences
+ */
+
+export function useGetCourseInsight<TData = Awaited<ReturnType<typeof getCourseInsight>>, TError = ErrorType<void>>(
+ params: GetCourseInsightParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCourseInsight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCourseInsightQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

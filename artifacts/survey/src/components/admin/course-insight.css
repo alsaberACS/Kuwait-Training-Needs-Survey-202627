@@ -1,0 +1,15 @@
+.ci-spin { animation: ci-spin 90s linear infinite; transform-origin: 50% 50%; transform-box: fill-box; }
+.ci-pulse { animation: ci-pulse 3s ease-out infinite; transform-origin: center; transform-box: fill-box; }
+.ci-flow { stroke-dasharray: 2 4; animation: ci-flow 10s linear infinite; }
+.ci-sheen { overflow: hidden; }
+.ci-sheen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.14) 50%, transparent 70%); transform: translateX(-120%); animation: ci-sheen 5.5s ease-in-out infinite; }
+.ci-dots { background-image: radial-gradient(rgba(231,213,162,.32) 1px, transparent 1.4px); background-size: 13px 13px; mask-image: linear-gradient(135deg, transparent 15%, #000 55%, transparent 95%); }
+.ci-scroll { scrollbar-width: thin; scrollbar-color: rgba(231,213,162,.5) transparent; }
+.ci-focus:focus-visible { outline: 2px solid #E7D5A2; outline-offset: 2px; }
+@keyframes ci-spin { to { transform: rotate(360deg); } }
+@keyframes ci-pulse { 0% { transform: scale(.9); opacity: .7 } 100% { transform: scale(1.45); opacity: 0 } }
+@keyframes ci-flow { to { stroke-dashoffset: -120; } }
+@keyframes ci-sheen { 0%, 60% { transform: translateX(-120%) } 100% { transform: translateX(120%) } }
+@media (prefers-reduced-motion: reduce) {
+  .ci-spin, .ci-pulse, .ci-flow, .ci-sheen::after { animation: none !important; }
+}

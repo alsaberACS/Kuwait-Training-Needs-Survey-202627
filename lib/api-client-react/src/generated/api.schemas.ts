@@ -255,6 +255,48 @@ export interface TrainingPathwaysReport {
   domains: TrainingPathwayDomain[];
 }
 
+/**
+ * Course ratings within one respondent path and the selected report scope; never includes identities.
+ */
+export interface CourseInsightSlice {
+  path: SurveyPath;
+  shown: number;
+  interested: number;
+  bookNow: number;
+  /**
+     * Null when nobody in this path rated the selected course.
+     * @nullable
+     */
+  needIndex: number | null;
+}
+
+export type CourseInsightReportState = typeof CourseInsightReportState[keyof typeof CourseInsightReportState];
+
+
+export const CourseInsightReportState = {
+  not_evaluated: 'not_evaluated',
+  no_interest: 'no_interest',
+  interested: 'interested',
+} as const;
+
+export interface CourseInsightReport {
+  /** Complete responses in the selected path, not the denominator for course demand. */
+  respondents: number;
+  state: CourseInsightReportState;
+  workshop: PathwayWorkshop;
+  domain: CourseDemandGroup;
+  domainCourseCount: number;
+  domainEvaluatedCourses: number;
+  /**
+     * Competition rank among evaluated courses in this domain by need index, book-now share, then shown count. Equal metrics share rank. Null for unobserved courses.
+     * @nullable
+     */
+  domainRank: number | null;
+  rankTied: boolean;
+  /** B2B and B2C course metrics within the report scope; an excluded path has no data, not evidence of no demand. */
+  byPath: CourseInsightSlice[];
+}
+
 export interface TrackRankItem {
   trackId: string;
   label: string;
@@ -397,6 +439,15 @@ path?: PathFilterParameter;
 };
 
 export type GetTrainingPathwaysParams = {
+path?: PathFilterParameter;
+};
+
+export type GetCourseInsightParams = {
+/**
+ * @maxLength 16
+ * @pattern ^C[1-9][0-9]*$
+ */
+courseId: string;
 path?: PathFilterParameter;
 };
 

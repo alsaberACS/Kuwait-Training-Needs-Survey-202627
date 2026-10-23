@@ -2,11 +2,12 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db, responsesTable } from "@workspace/db";
-import { ListAdminResponsesQueryParams, GetMatchingResultsQueryParams, GetTrainingPathwaysQueryParams, GetTrainingPathwaysResponse } from "@workspace/api-zod";
+import { ListAdminResponsesQueryParams, GetMatchingResultsQueryParams, GetTrainingPathwaysQueryParams, GetTrainingPathwaysResponse, GetCourseInsightQueryParams, GetCourseInsightResponse } from "@workspace/api-zod";
 import { toDto } from "./responses";
 import { catalogue } from "../data/catalogue";
 import { summary, skillsGap, courseDemand, trackRanks, preferences, segments, matching, toCatalogueDto, toCsv } from "../lib/analytics";
 import { trainingPathways } from "../lib/training-pathways";
+import { courseInsight } from "../lib/course-insight";
 
 const router: IRouter = Router();
 
@@ -74,6 +75,20 @@ router.get("/admin/training-pathways", async (req, res): Promise<void> => {
   }
   const rows = await completedRows(parsed.data.path);
   res.json(GetTrainingPathwaysResponse.parse(trainingPathways(rows, parsed.data.path)));
+});
+router.get("/admin/course-insight", async (req, res): Promise<void> => {
+  const parsed = GetCourseInsightQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid course identifier or survey path" });
+    return;
+  }
+  const report = courseInsight(await completedRows(parsed.data.path), parsed.data.courseId, parsed.data.path);
+  if (!report) {
+    res.status(404).json({ error: "Unknown survey workshop" });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.json(GetCourseInsightResponse.parse(report));
 });
 router.get("/admin/track-ranks", async (req, res) => res.json(trackRanks(await completedRows(pathOf(req)))));
 router.get("/admin/preferences", async (req, res) => res.json(preferences(await completedRows(pathOf(req)))));

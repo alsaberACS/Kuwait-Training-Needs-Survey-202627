@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route,
+  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation,
 } from "lucide-react";
 import { setAuthTokenGetter, useVerifyAdminKey, useExportResponsesCsv, getExportResponsesCsvQueryKey, type SurveyPath } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
@@ -17,14 +17,16 @@ import { Segments } from "@/components/admin/segments";
 import { Matching } from "@/components/admin/matching";
 import { Responses } from "@/components/admin/responses";
 import { TrainingPathways } from "@/components/admin/training-pathways";
+import { CourseInsight } from "@/components/admin/course-insight";
 
 setAuthTokenGetter(() => sessionStorage.getItem("adminKey"));
 
-type Tab = "overview" | "infographics" | "pathways" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
+type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
 const TABS: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "infographics", label: "إنفوجرافيك", icon: Sparkles },
   { id: "pathways", label: "لوحة المسارات التدريبية", icon: Route },
+  { id: "course-insight", label: "الوضع للدورة", icon: Presentation },
   { id: "skills", label: "فجوة المهارات", icon: Activity },
   { id: "courses", label: "الطلب على الدورات", icon: GraduationCap },
   { id: "tracks", label: "المسارات المستقبلية", icon: ListOrdered },
@@ -93,7 +95,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     a.click();
     URL.revokeObjectURL(a.href);
   };
-  const showPath = ["overview", "infographics", "pathways", "courses", "tracks", "prefs"].includes(tab);
+  const showPath = ["overview", "infographics", "pathways", "course-insight", "courses", "tracks", "prefs"].includes(tab);
   const chapter = CHAPTERS[tab];
   return (
     <div className="min-h-[100dvh] bg-background lg:grid lg:grid-cols-[250px_1fr]">
@@ -145,6 +147,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === "overview" && <Overview path={path} />}
           {tab === "infographics" && <Infographics path={path} />}
           {tab === "pathways" && <TrainingPathways path={path} />}
+          {tab === "course-insight" && <CourseInsight path={path} />}
           {tab === "skills" && <SkillsGap />}
           {tab === "courses" && <Courses path={path} />}
           {tab === "tracks" && <Tracks path={path} />}
