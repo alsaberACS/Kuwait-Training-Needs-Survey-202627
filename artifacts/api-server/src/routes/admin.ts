@@ -8,6 +8,7 @@ import { catalogue } from "../data/catalogue";
 import { summary, skillsGap, courseDemand, trackRanks, preferences, segments, matching, toCatalogueDto, toCsv } from "../lib/analytics";
 import { trainingPathways } from "../lib/training-pathways";
 import { courseInsight } from "../lib/course-insight";
+import { focusGroupAnalysis } from "../data/focus-groups";
 
 const router: IRouter = Router();
 
@@ -32,6 +33,11 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
 router.use("/admin", requireAdmin);
 
 router.post("/admin/session", (_req, res) => res.json({ ok: true }));
+
+router.get("/admin/focus-groups", (_req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(focusGroupAnalysis);
+});
 
 const pathOf = (req: Request) => (req.query.path === "B2B" || req.query.path === "B2C" ? (req.query.path as string) : undefined);
 

@@ -285,6 +285,24 @@ paths:
           description: Admin access required
         "404":
           description: Unknown survey workshop
+  /admin/focus-groups:
+    get:
+      operationId: getFocusGroupAnalysis
+      tags: [admin]
+      summary: Evidence-linked qualitative synthesis of the three supplied focus-group records
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: Curated qualitative analysis; group recurrence is not participant voting or survey demand
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FocusGroupAnalysis"
+        "401":
+          description: Admin access required
+        "503":
+          description: Admin access is not configured
   /admin/track-ranks:
     get:
       operationId: getTrackRanks
@@ -1054,3 +1072,161 @@ components:
           items:
             $ref: "#/components/schemas/MatchingItem"
       required: [needWeight, respondents, items]
+    FocusGroupSource:
+      type: object
+      required: [id, label, sourceFile, sourceLanguage, context, takeaway, distinctiveThemes, evidenceIds]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        sourceFile: { type: string }
+        sourceLanguage: { type: string, enum: [ar, en] }
+        context: { type: string }
+        takeaway: { type: string }
+        distinctiveThemes: { type: array, items: { type: string } }
+        evidenceIds: { type: array, items: { type: string } }
+    FocusGroupEvidence:
+      type: object
+      required: [id, groupId, lineStart, lineEnd, quote, meaning, language, caution]
+      properties:
+        id: { type: string }
+        groupId: { type: string }
+        lineStart: { type: integer, minimum: 1 }
+        lineEnd: { type: integer, minimum: 1 }
+        quote:
+          type: string
+          description: Exact contiguous excerpt from the transcript, not its preceding summary
+        meaning:
+          type: string
+          description: Arabic analytical paraphrase, never represented as a verbatim quote
+        language: { type: string, enum: [ar, en] }
+        caution: { type: string }
+    FocusGroupSignal:
+      type: object
+      required: [groupId, status, note, evidenceIds]
+      properties:
+        groupId: { type: string }
+        status:
+          type: string
+          enum: [explicit, context, not_observed]
+          description: Explicit need or skill gap, related discussion only, or no clear evidence in this record; not intensity
+        note: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+    FocusGroupTheme:
+      type: object
+      required: [id, title, summary, coverage, priority, signals, courseIdeas, audience, deliveryAdvice]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        summary: { type: string }
+        coverage:
+          type: integer
+          minimum: 0
+          maximum: 3
+          description: Unique groups with explicit need or skill-gap evidence; no individual or mention counts
+        priority:
+          type: string
+          enum: [shared, targeted, specialist]
+          description: "Breadth only: shared in 3 groups, targeted in 2, specialist in 1; not commercial value"
+        signals:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupSignal" }
+        courseIdeas:
+          type: array
+          items: { type: string }
+          description: Analyst-proposed course titles, not existing catalogue entries or unanimous requests
+        audience: { type: string }
+        deliveryAdvice: { type: string }
+    FocusGroupFinding:
+      type: object
+      required: [id, title, body, evidenceIds]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        body: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+    FocusGroupIssue:
+      type: object
+      required: [id, title, observation, implication, recommendation, evidenceIds]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        observation: { type: string }
+        implication: { type: string }
+        recommendation: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+    FocusGroupTension:
+      type: object
+      required: [id, title, firstPosition, secondPosition, resolution, evidenceIds]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        firstPosition: { type: string }
+        secondPosition: { type: string }
+        resolution: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+    FocusGroupAction:
+      type: object
+      required: [id, stage, timeframe, title, action, owner, successMeasure, themeIds, evidenceIds]
+      properties:
+        id: { type: string }
+        stage: { type: integer, minimum: 1, maximum: 3 }
+        timeframe:
+          type: string
+          description: Proposed implementation window, not a meeting date or an agreed commitment
+        title: { type: string }
+        action: { type: string }
+        owner: { type: string }
+        successMeasure:
+          type: string
+          description: Proposed evaluation measure; no fabricated baseline or target
+        themeIds: { type: array, items: { type: string } }
+        evidenceIds: { type: array, items: { type: string } }
+    FocusGroupMethodology:
+      type: object
+      required: [approach, countUnit, rankingRule, evidenceRule, scopeNote, limitations]
+      properties:
+        approach: { type: string }
+        countUnit: { type: string }
+        rankingRule: { type: string }
+        evidenceRule: { type: string }
+        scopeNote: { type: string }
+        limitations: { type: array, items: { type: string } }
+    FocusGroupStats:
+      type: object
+      required: [groups, codedThemes, sharedThemes, evidenceExcerpts]
+      properties:
+        groups: { type: integer }
+        codedThemes: { type: integer }
+        sharedThemes: { type: integer }
+        evidenceExcerpts: { type: integer }
+    FocusGroupAnalysis:
+      type: object
+      required: [analysisDate, title, headline, synopsis, stats, methodology, groups, themes, executiveFindings, issues, tensions, recommendations, evidence]
+      properties:
+        analysisDate: { type: string }
+        title: { type: string }
+        headline: { type: string }
+        synopsis: { type: string }
+        stats: { $ref: "#/components/schemas/FocusGroupStats" }
+        methodology: { $ref: "#/components/schemas/FocusGroupMethodology" }
+        groups:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupSource" }
+        themes:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupTheme" }
+        executiveFindings:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupFinding" }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupIssue" }
+        tensions:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupTension" }
+        recommendations:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupAction" }
+        evidence:
+          type: array
+          items: { $ref: "#/components/schemas/FocusGroupEvidence" }

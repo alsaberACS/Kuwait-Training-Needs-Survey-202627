@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation,
+  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation, MessagesSquare,
 } from "lucide-react";
 import { setAuthTokenGetter, useVerifyAdminKey, useExportResponsesCsv, getExportResponsesCsvQueryKey, type SurveyPath } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
@@ -18,15 +18,17 @@ import { Matching } from "@/components/admin/matching";
 import { Responses } from "@/components/admin/responses";
 import { TrainingPathways } from "@/components/admin/training-pathways";
 import { CourseInsight } from "@/components/admin/course-insight";
+import { FocusGroupAnalysisView } from "@/components/admin/focus-groups";
 
 setAuthTokenGetter(() => sessionStorage.getItem("adminKey"));
 
-type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
+type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "focus-groups" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
 const TABS: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "infographics", label: "إنفوجرافيك", icon: Sparkles },
   { id: "pathways", label: "لوحة المسارات التدريبية", icon: Route },
   { id: "course-insight", label: "الوضع للدورة", icon: Presentation },
+  { id: "focus-groups", label: "التحليل النوعي", icon: MessagesSquare },
   { id: "skills", label: "فجوة المهارات", icon: Activity },
   { id: "courses", label: "الطلب على الدورات", icon: GraduationCap },
   { id: "tracks", label: "المسارات المستقبلية", icon: ListOrdered },
@@ -148,6 +150,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === "infographics" && <Infographics path={path} />}
           {tab === "pathways" && <TrainingPathways path={path} />}
           {tab === "course-insight" && <CourseInsight path={path} />}
+          {tab === "focus-groups" && <FocusGroupAnalysisView />}
           {tab === "skills" && <SkillsGap />}
           {tab === "courses" && <Courses path={path} />}
           {tab === "tracks" && <Tracks path={path} />}

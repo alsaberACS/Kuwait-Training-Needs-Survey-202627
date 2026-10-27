@@ -1,0 +1,38 @@
+.focus-groups-report > * {
+  min-width: 0;
+}
+
+@media print {
+  body:has(.focus-groups-report) {
+    background: white;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  body:has(.focus-groups-report) aside,
+  body:has(.focus-groups-report) [data-testid="button-menu"] {
+    display: none !important;
+  }
+
+  body:has(.focus-groups-report) div:has(> main) {
+    display: block !important;
+    min-height: 0;
+  }
+
+  body:has(.focus-groups-report) main {
+    width: 100%;
+    padding: 0;
+  }
+
+  .focus-groups-report > * {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .focus-groups-report article,
+  .focus-groups-report [data-testid^="row-theme-"],
+  .focus-groups-report [data-testid^="row-issue-"],
+  .focus-groups-report tr {
+    break-inside: avoid;
+  }
+}

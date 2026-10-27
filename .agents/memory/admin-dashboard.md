@@ -28,3 +28,7 @@ description: Non-obvious rules for the /admin results dashboard — RTL chart qu
 **Animated callout positioning.** Keep static anchor translation separate from animation transforms, and let layout rules—not decorative helper classes—own positioning.
 **Why:** Framer Motion can replace an inline `transform`, while unlayered decorative CSS can override Tailwind positioning utilities; together they can move or clip infographic callouts even when the metric data is correct.
 **How to apply:** use a separate positioning wrapper or the CSS `translate` property for anchors, and check all callouts after their entrance animation completes.
+
+**Preview instrumentation and generic JSX.** Specialize generic React components outside the JSX tag rather than supplying type arguments inline.
+**Why:** the development preview instrumentation inserts metadata attributes before inline type arguments, producing invalid JSX even when TypeScript and the production build pass.
+**How to apply:** use a typed component alias outside JSX and keep its options typed. Validate the development preview independently of the production build; do not disable the visual-editing plugin to hide this issue.

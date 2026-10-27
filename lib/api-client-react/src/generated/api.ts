@@ -28,6 +28,7 @@ import type {
   CourseDemandReport,
   CourseInsightReport,
   CreateResponseRequest,
+  FocusGroupAnalysis,
   GetAdminSummaryParams,
   GetCourseDemandParams,
   GetCourseInsightParams,
@@ -1056,6 +1057,83 @@ export function useGetCourseInsight<TData = Awaited<ReturnType<typeof getCourseI
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCourseInsightQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFocusGroupAnalysisUrl = () => {
+
+
+
+
+  return `/api/admin/focus-groups`
+}
+
+/**
+ * @summary Evidence-linked qualitative synthesis of the three supplied focus-group records
+ */
+export const getFocusGroupAnalysis = async ( options?: Parameters<typeof customFetch>[1]): Promise<FocusGroupAnalysis> => {
+
+  return customFetch<FocusGroupAnalysis>(getGetFocusGroupAnalysisUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFocusGroupAnalysisQueryKey = () => {
+    return [
+    `/api/admin/focus-groups`
+    ] as const;
+    }
+
+
+export const getGetFocusGroupAnalysisQueryOptions = <TData = Awaited<ReturnType<typeof getFocusGroupAnalysis>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFocusGroupAnalysis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFocusGroupAnalysisQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFocusGroupAnalysis>>> = ({ signal }) => getFocusGroupAnalysis({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFocusGroupAnalysis>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFocusGroupAnalysisQueryResult = NonNullable<Awaited<ReturnType<typeof getFocusGroupAnalysis>>>
+export type GetFocusGroupAnalysisQueryError = ErrorType<void>
+
+
+/**
+ * @summary Evidence-linked qualitative synthesis of the three supplied focus-group records
+ */
+
+export function useGetFocusGroupAnalysis<TData = Awaited<ReturnType<typeof getFocusGroupAnalysis>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFocusGroupAnalysis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFocusGroupAnalysisQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

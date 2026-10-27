@@ -410,6 +410,174 @@ export interface MatchingReport {
   items: MatchingItem[];
 }
 
+export type FocusGroupSourceSourceLanguage = typeof FocusGroupSourceSourceLanguage[keyof typeof FocusGroupSourceSourceLanguage];
+
+
+export const FocusGroupSourceSourceLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export interface FocusGroupSource {
+  id: string;
+  label: string;
+  sourceFile: string;
+  sourceLanguage: FocusGroupSourceSourceLanguage;
+  context: string;
+  takeaway: string;
+  distinctiveThemes: string[];
+  evidenceIds: string[];
+}
+
+export type FocusGroupEvidenceLanguage = typeof FocusGroupEvidenceLanguage[keyof typeof FocusGroupEvidenceLanguage];
+
+
+export const FocusGroupEvidenceLanguage = {
+  ar: 'ar',
+  en: 'en',
+} as const;
+
+export interface FocusGroupEvidence {
+  id: string;
+  groupId: string;
+  /** @minimum 1 */
+  lineStart: number;
+  /** @minimum 1 */
+  lineEnd: number;
+  /** Exact contiguous excerpt from the transcript, not its preceding summary */
+  quote: string;
+  /** Arabic analytical paraphrase, never represented as a verbatim quote */
+  meaning: string;
+  language: FocusGroupEvidenceLanguage;
+  caution: string;
+}
+
+/**
+ * Explicit need or skill gap, related discussion only, or no clear evidence in this record; not intensity
+ */
+export type FocusGroupSignalStatus = typeof FocusGroupSignalStatus[keyof typeof FocusGroupSignalStatus];
+
+
+export const FocusGroupSignalStatus = {
+  explicit: 'explicit',
+  context: 'context',
+  not_observed: 'not_observed',
+} as const;
+
+export interface FocusGroupSignal {
+  groupId: string;
+  /** Explicit need or skill gap, related discussion only, or no clear evidence in this record; not intensity */
+  status: FocusGroupSignalStatus;
+  note: string;
+  evidenceIds: string[];
+}
+
+/**
+ * Breadth only: shared in 3 groups, targeted in 2, specialist in 1; not commercial value
+ */
+export type FocusGroupThemePriority = typeof FocusGroupThemePriority[keyof typeof FocusGroupThemePriority];
+
+
+export const FocusGroupThemePriority = {
+  shared: 'shared',
+  targeted: 'targeted',
+  specialist: 'specialist',
+} as const;
+
+export interface FocusGroupTheme {
+  id: string;
+  title: string;
+  summary: string;
+  /**
+     * Unique groups with explicit need or skill-gap evidence; no individual or mention counts
+     * @minimum 0
+     * @maximum 3
+     */
+  coverage: number;
+  /** Breadth only: shared in 3 groups, targeted in 2, specialist in 1; not commercial value */
+  priority: FocusGroupThemePriority;
+  signals: FocusGroupSignal[];
+  /** Analyst-proposed course titles, not existing catalogue entries or unanimous requests */
+  courseIdeas: string[];
+  audience: string;
+  deliveryAdvice: string;
+}
+
+export interface FocusGroupFinding {
+  id: string;
+  title: string;
+  body: string;
+  evidenceIds: string[];
+}
+
+export interface FocusGroupIssue {
+  id: string;
+  title: string;
+  observation: string;
+  implication: string;
+  recommendation: string;
+  evidenceIds: string[];
+}
+
+export interface FocusGroupTension {
+  id: string;
+  title: string;
+  firstPosition: string;
+  secondPosition: string;
+  resolution: string;
+  evidenceIds: string[];
+}
+
+export interface FocusGroupAction {
+  id: string;
+  /**
+     * @minimum 1
+     * @maximum 3
+     */
+  stage: number;
+  /** Proposed implementation window, not a meeting date or an agreed commitment */
+  timeframe: string;
+  title: string;
+  action: string;
+  owner: string;
+  /** Proposed evaluation measure; no fabricated baseline or target */
+  successMeasure: string;
+  themeIds: string[];
+  evidenceIds: string[];
+}
+
+export interface FocusGroupMethodology {
+  approach: string;
+  countUnit: string;
+  rankingRule: string;
+  evidenceRule: string;
+  scopeNote: string;
+  limitations: string[];
+}
+
+export interface FocusGroupStats {
+  groups: number;
+  codedThemes: number;
+  sharedThemes: number;
+  evidenceExcerpts: number;
+}
+
+export interface FocusGroupAnalysis {
+  analysisDate: string;
+  title: string;
+  headline: string;
+  synopsis: string;
+  stats: FocusGroupStats;
+  methodology: FocusGroupMethodology;
+  groups: FocusGroupSource[];
+  themes: FocusGroupTheme[];
+  executiveFindings: FocusGroupFinding[];
+  issues: FocusGroupIssue[];
+  tensions: FocusGroupTension[];
+  recommendations: FocusGroupAction[];
+  evidence: FocusGroupEvidence[];
+}
+
 export type PathFilterParameter = SurveyPath;
 
 export type GetAdminSummaryParams = {

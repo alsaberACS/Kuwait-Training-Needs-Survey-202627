@@ -519,6 +519,109 @@ export const GetCourseInsightResponse = zod.object({
 
 
 /**
+ * @summary Evidence-linked qualitative synthesis of the three supplied focus-group records
+ */
+export const getFocusGroupAnalysisResponseThemesItemCoverageMin = 0;
+export const getFocusGroupAnalysisResponseThemesItemCoverageMax = 3;
+
+export const getFocusGroupAnalysisResponseRecommendationsItemStageMax = 3;
+
+
+
+
+
+export const GetFocusGroupAnalysisResponse = zod.object({
+  "analysisDate": zod.string(),
+  "title": zod.string(),
+  "headline": zod.string(),
+  "synopsis": zod.string(),
+  "stats": zod.object({
+  "groups": zod.number().int(),
+  "codedThemes": zod.number().int(),
+  "sharedThemes": zod.number().int(),
+  "evidenceExcerpts": zod.number().int()
+}),
+  "methodology": zod.object({
+  "approach": zod.string(),
+  "countUnit": zod.string(),
+  "rankingRule": zod.string(),
+  "evidenceRule": zod.string(),
+  "scopeNote": zod.string(),
+  "limitations": zod.array(zod.string())
+}),
+  "groups": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "sourceFile": zod.string(),
+  "sourceLanguage": zod.enum(['ar', 'en']),
+  "context": zod.string(),
+  "takeaway": zod.string(),
+  "distinctiveThemes": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "themes": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "summary": zod.string(),
+  "coverage": zod.number().int().min(getFocusGroupAnalysisResponseThemesItemCoverageMin).max(getFocusGroupAnalysisResponseThemesItemCoverageMax).describe('Unique groups with explicit need or skill-gap evidence; no individual or mention counts'),
+  "priority": zod.enum(['shared', 'targeted', 'specialist']).describe('Breadth only: shared in 3 groups, targeted in 2, specialist in 1; not commercial value'),
+  "signals": zod.array(zod.object({
+  "groupId": zod.string(),
+  "status": zod.enum(['explicit', 'context', 'not_observed']).describe('Explicit need or skill gap, related discussion only, or no clear evidence in this record; not intensity'),
+  "note": zod.string(),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "courseIdeas": zod.array(zod.string()).describe('Analyst-proposed course titles, not existing catalogue entries or unanimous requests'),
+  "audience": zod.string(),
+  "deliveryAdvice": zod.string()
+})),
+  "executiveFindings": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "issues": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "observation": zod.string(),
+  "implication": zod.string(),
+  "recommendation": zod.string(),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "tensions": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "firstPosition": zod.string(),
+  "secondPosition": zod.string(),
+  "resolution": zod.string(),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "recommendations": zod.array(zod.object({
+  "id": zod.string(),
+  "stage": zod.number().int().min(1).max(getFocusGroupAnalysisResponseRecommendationsItemStageMax),
+  "timeframe": zod.string().describe('Proposed implementation window, not a meeting date or an agreed commitment'),
+  "title": zod.string(),
+  "action": zod.string(),
+  "owner": zod.string(),
+  "successMeasure": zod.string().describe('Proposed evaluation measure; no fabricated baseline or target'),
+  "themeIds": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "evidence": zod.array(zod.object({
+  "id": zod.string(),
+  "groupId": zod.string(),
+  "lineStart": zod.number().int().min(1),
+  "lineEnd": zod.number().int().min(1),
+  "quote": zod.string().describe('Exact contiguous excerpt from the transcript, not its preceding summary'),
+  "meaning": zod.string().describe('Arabic analytical paraphrase, never represented as a verbatim quote'),
+  "language": zod.enum(['ar', 'en']),
+  "caution": zod.string()
+}))
+})
+
+
+/**
  * @summary Future-track ranking results
  */
 export const GetTrackRanksQueryParams = zod.object({
