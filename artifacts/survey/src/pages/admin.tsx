@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation, MessagesSquare,
+  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation, MessagesSquare, Network,
 } from "lucide-react";
 import { setAuthTokenGetter, useVerifyAdminKey, useExportResponsesCsv, getExportResponsesCsvQueryKey, type SurveyPath } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
@@ -19,16 +19,18 @@ import { Responses } from "@/components/admin/responses";
 import { TrainingPathways } from "@/components/admin/training-pathways";
 import { CourseInsight } from "@/components/admin/course-insight";
 import { FocusGroupAnalysisView } from "@/components/admin/focus-groups";
+import { FocusGroupInfographics } from "@/components/admin/focus-group-infographics";
 
 setAuthTokenGetter(() => sessionStorage.getItem("adminKey"));
 
-type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "focus-groups" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
+type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "focus-groups" | "focus-infographics" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
 const TABS: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "infographics", label: "إنفوجرافيك", icon: Sparkles },
   { id: "pathways", label: "لوحة المسارات التدريبية", icon: Route },
   { id: "course-insight", label: "الوضع للدورة", icon: Presentation },
   { id: "focus-groups", label: "التحليل النوعي", icon: MessagesSquare },
+  { id: "focus-infographics", label: "إنفوجرافيك نوعي", icon: Network },
   { id: "skills", label: "فجوة المهارات", icon: Activity },
   { id: "courses", label: "الطلب على الدورات", icon: GraduationCap },
   { id: "tracks", label: "المسارات المستقبلية", icon: ListOrdered },
@@ -110,7 +112,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
         <nav className="grid min-h-0 flex-1 content-start gap-0.5 overflow-y-auto px-3 pb-3">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => { setTab(t.id); setNavOpen(false); }} data-testid={`tab-${t.id}`}
+            <button key={t.id} onClick={() => { setTab(t.id); setNavOpen(false); if (t.id === "focus-infographics") window.scrollTo(0, 0); }} data-testid={`tab-${t.id}`}
               className={cn("flex items-center gap-3 rounded-lg px-3 py-2.5 text-start text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
                 tab === t.id ? "bg-sidebar-accent font-semibold text-white" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60")}>
               <span className={cn("font-display w-5 shrink-0 text-center text-[11px] tabular-nums", tab === t.id ? "text-sidebar-primary" : "text-sidebar-foreground/40")}>{CHAPTERS[t.id].number}</span>
@@ -151,6 +153,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === "pathways" && <TrainingPathways path={path} />}
           {tab === "course-insight" && <CourseInsight path={path} />}
           {tab === "focus-groups" && <FocusGroupAnalysisView />}
+          {tab === "focus-infographics" && <FocusGroupInfographics onOpenAnalysis={() => { setTab("focus-groups"); window.scrollTo(0, 0); }} />}
           {tab === "skills" && <SkillsGap />}
           {tab === "courses" && <Courses path={path} />}
           {tab === "tracks" && <Tracks path={path} />}

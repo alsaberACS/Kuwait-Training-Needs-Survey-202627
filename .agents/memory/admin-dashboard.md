@@ -21,7 +21,7 @@ description: Non-obvious rules for the /admin results dashboard — RTL chart qu
 
 **Catalogue joins from the client.** Matching items list every linked survey item (courses, skills, tracks, retired R-items), so joining a course to "its" workshop needs the primary link, exposed as primaryItems on the matching DTO; do not guess from linkedItems. Field need in the matching report also comes from skills and tracks, so "workshops the field confirmed" can exceed the number of courses actually shown.
 
-**Separate visual references.** The training-pathway board and single-course infographic follow the newer city-photo references with connected circles, fine lines and motion; they are not replacements or redesigns of the existing infographic.
+**Separate visual references.** The training-pathway board, single-course infographic and qualitative infographics follow the newer city-photo references with connected circles, fine lines and motion; they are not replacements or redesigns of the existing infographic or detailed qualitative report.
 **Why:** the user explicitly asked to retain the existing infographic and continues to request additional tabs with their own reference images.
 **How to apply:** preserve each view's visual treatment when revising another.
 
@@ -32,3 +32,7 @@ description: Non-obvious rules for the /admin results dashboard — RTL chart qu
 **Preview instrumentation and generic JSX.** Specialize generic React components outside the JSX tag rather than supplying type arguments inline.
 **Why:** the development preview instrumentation inserts metadata attributes before inline type arguments, producing invalid JSX even when TypeScript and the production build pass.
 **How to apply:** use a typed component alias outside JSX and keep its options typed. Validate the development preview independently of the production build; do not disable the visual-editing plugin to hide this issue.
+
+**Long-panel entrance animations.** Reveal infographic panels on entering the viewport, not after a large fraction of the entire panel becomes visible.
+**Why:** a tall mobile poster can exceed the viewport by enough that a percentage-based intersection threshold is unreachable, leaving its contents permanently transparent.
+**How to apply:** use a small entry margin or any-intersection trigger, and force the panel itself as well as its children visible in print.

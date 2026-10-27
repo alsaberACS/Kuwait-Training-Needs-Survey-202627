@@ -1,0 +1,26 @@
+.fi-poster { position: relative; overflow: hidden; border-radius: 1.75rem; color: hsl(40 35% 96%); isolation: isolate; background: hsl(206 62% 12%); }
+.fi-poster > .fi-bg { position: absolute; inset: 0; z-index: -2; background-size: cover; background-position: center; filter: blur(3px) saturate(.75); transform: scale(1.05); }
+.fi-poster::before { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(160deg, hsl(206 62% 12% / .9), hsl(196 60% 14% / .78) 55%, hsl(206 62% 10% / .92)); }
+.fi-glass { background: hsl(206 50% 96% / .08); border: 1px solid hsl(40 40% 96% / .22); backdrop-filter: blur(6px); }
+.fi-line { stroke: hsl(40 40% 96% / .7); stroke-width: 1.2; fill: none; }
+.fi-dot { fill: hsl(40 40% 97%); }
+.fi-kicker { font-family: var(--app-font-display); letter-spacing: .18em; font-size: 11px; color: hsl(38 72% 64%); font-weight: 600; }
+.fi-muted { color: hsl(40 25% 86%); }
+.fi-spin { animation: fi-spin 60s linear infinite; transform-origin: center; transform-box: fill-box; }
+.fi-paused .fi-spin, .fi-paused .fi-pulse { animation-play-state: paused; }
+.fi-pulse { animation: fi-pulse 3.2s ease-in-out infinite; }
+@keyframes fi-spin { to { transform: rotate(360deg); } }
+@keyframes fi-pulse { 0%,100% { opacity: .35 } 50% { opacity: .9 } }
+@media (prefers-reduced-motion: reduce) { .fi-spin, .fi-pulse { animation: none; } }
+@media print {
+  body:has([data-testid="view-focus-infographics"]) aside,
+  body:has([data-testid="view-focus-infographics"]) [data-testid="button-menu"] { display: none !important; }
+  body:has([data-testid="view-focus-infographics"]) div:has(> main) { display: block !important; min-height: 0; }
+  body:has([data-testid="view-focus-infographics"]) main { width: 100%; padding: 0; }
+  .fi-poster { background: hsl(206 62% 14%) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; break-inside: auto; }
+  .fi-poster header, .fi-poster article, .fi-poster tr, .fi-poster li { break-inside: avoid; }
+  .fi-spin, .fi-pulse { animation: none; }
+  .fi-poster, .fi-poster * { opacity: 1 !important; transform: none !important; }
+  .fi-poster .fi-line { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+}
