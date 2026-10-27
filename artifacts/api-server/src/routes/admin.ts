@@ -2,13 +2,14 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { db, responsesTable } from "@workspace/db";
-import { ListAdminResponsesQueryParams, GetMatchingResultsQueryParams, GetTrainingPathwaysQueryParams, GetTrainingPathwaysResponse, GetCourseInsightQueryParams, GetCourseInsightResponse } from "@workspace/api-zod";
+import { ListAdminResponsesQueryParams, GetMatchingResultsQueryParams, GetTrainingPathwaysQueryParams, GetTrainingPathwaysResponse, GetCourseInsightQueryParams, GetCourseInsightResponse, GetMixedMethodsQueryParams, GetMixedMethodsResponse } from "@workspace/api-zod";
 import { toDto } from "./responses";
 import { catalogue } from "../data/catalogue";
 import { summary, skillsGap, courseDemand, trackRanks, preferences, segments, matching, toCatalogueDto, toCsv } from "../lib/analytics";
 import { trainingPathways } from "../lib/training-pathways";
 import { courseInsight } from "../lib/course-insight";
 import { focusGroupAnalysis } from "../data/focus-groups";
+import { mixedMethods } from "../lib/mixed-methods";
 
 const router: IRouter = Router();
 
@@ -97,6 +98,15 @@ router.get("/admin/course-insight", async (req, res): Promise<void> => {
   res.json(GetCourseInsightResponse.parse(report));
 });
 router.get("/admin/track-ranks", async (req, res) => res.json(trackRanks(await completedRows(pathOf(req)))));
+router.get("/admin/mixed-methods", async (req, res): Promise<void> => {
+  const parsed = GetMixedMethodsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid survey path" });
+    return;
+  }
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json(GetMixedMethodsResponse.parse(mixedMethods(await completedRows(parsed.data.path), parsed.data.path)));
+});
 router.get("/admin/preferences", async (req, res) => res.json(preferences(await completedRows(pathOf(req)))));
 router.get("/admin/segments", async (_req, res) => res.json(segments(await completedRows())));
 

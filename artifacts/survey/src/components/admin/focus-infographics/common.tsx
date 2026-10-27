@@ -15,7 +15,7 @@ export const TIER = {
 export function Poster({ id, bg, kicker, title, lead, children }: { id: string; bg: string; kicker: string; title: string; lead?: string; children: ReactNode }) {
   const reduce = useReducedMotion();
   return (
-    <motion.section data-testid={`poster-${id}`} aria-labelledby={`fi-${id}-t`} className="fi-poster min-w-0 p-5 sm:p-8"
+    <motion.section id={`fi-${id}`} data-testid={`poster-${id}`} aria-labelledby={`fi-${id}-t`} className="fi-poster min-w-0 scroll-mt-16 p-5 sm:p-8"
       initial={reduce ? false : { opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.7, ease: [0.2, 0.8, 0.2, 1] }}>
       <div className="fi-bg" style={{ backgroundImage: `url(${BG(bg)})` }} aria-hidden />

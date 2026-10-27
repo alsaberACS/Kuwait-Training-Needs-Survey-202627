@@ -33,12 +33,14 @@ import type {
   GetCourseDemandParams,
   GetCourseInsightParams,
   GetMatchingResultsParams,
+  GetMixedMethodsParams,
   GetPreferencesParams,
   GetTrackRanksParams,
   GetTrainingPathwaysParams,
   HealthStatus,
   ListAdminResponsesParams,
   MatchingReport,
+  MixedMethodsReport,
   PreferenceReport,
   ResponseList,
   SegmentReport,
@@ -1134,6 +1136,90 @@ export function useGetFocusGroupAnalysis<TData = Awaited<ReturnType<typeof getFo
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetFocusGroupAnalysisQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetMixedMethodsUrl = (params?: GetMixedMethodsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/admin/mixed-methods?${stringifiedParams}` : `/api/admin/mixed-methods`
+}
+
+/**
+ * @summary Descriptive integration of survey demand, qualitative evidence and catalogue training levels
+ */
+export const getMixedMethods = async (params?: GetMixedMethodsParams, options?: Parameters<typeof customFetch>[1]): Promise<MixedMethodsReport> => {
+
+  return customFetch<MixedMethodsReport>(getGetMixedMethodsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMixedMethodsQueryKey = (params?: GetMixedMethodsParams,) => {
+    return [
+    `/api/admin/mixed-methods`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMixedMethodsQueryOptions = <TData = Awaited<ReturnType<typeof getMixedMethods>>, TError = ErrorType<void>>(params?: GetMixedMethodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMixedMethods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMixedMethodsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMixedMethods>>> = ({ signal }) => getMixedMethods(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMixedMethods>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMixedMethodsQueryResult = NonNullable<Awaited<ReturnType<typeof getMixedMethods>>>
+export type GetMixedMethodsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Descriptive integration of survey demand, qualitative evidence and catalogue training levels
+ */
+
+export function useGetMixedMethods<TData = Awaited<ReturnType<typeof getMixedMethods>>, TError = ErrorType<void>>(
+ params?: GetMixedMethodsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMixedMethods>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMixedMethodsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

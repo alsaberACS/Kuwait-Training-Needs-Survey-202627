@@ -303,6 +303,26 @@ paths:
           description: Admin access required
         "503":
           description: Admin access is not configured
+  /admin/mixed-methods:
+    get:
+      operationId: getMixedMethods
+      tags: [admin]
+      summary: Descriptive integration of survey demand, qualitative evidence and catalogue training levels
+      security:
+        - AdminKey: []
+      parameters:
+        - $ref: "#/components/parameters/PathFilter"
+      responses:
+        "200":
+          description: Read-only six-domain joint display. Survey filters never filter the independent focus groups.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MixedMethodsReport"
+        "400":
+          description: Invalid survey path
+        "401":
+          description: Admin access required
   /admin/track-ranks:
     get:
       operationId: getTrackRanks
@@ -850,6 +870,127 @@ components:
           items:
             $ref: "#/components/schemas/CourseInsightSlice"
       required: [respondents, state, workshop, domain, domainCourseCount, domainEvaluatedCourses, domainRank, rankTied, byPath]
+    MixedDemand:
+      type: object
+      description: Valid Q25 ratings pooled within a domain or catalogue level; people deduplicated separately. Null percentages mean unobserved, not zero interest.
+      properties:
+        courseCount: { type: integer }
+        evaluatedCourses: { type: integer }
+        evaluatedRespondents: { type: integer }
+        interestedRespondents: { type: integer }
+        bookNowRespondents: { type: integer }
+        ratingCount: { type: integer }
+        notInterestedRatings: { type: integer }
+        futureRatings: { type: integer }
+        bookNowRatings: { type: integer }
+        needIndex:
+          type: [number, "null"]
+          description: 100 times sum of valid 0/1/2 ratings divided by twice ratingCount. Ratings, not unique respondents, are the weighting unit.
+        interestShare:
+          type: [number, "null"]
+          description: Unique respondents with any 1 or 2 divided by evaluatedRespondents, times 100. Not share of all respondents.
+        bookNowShare:
+          type: [number, "null"]
+          description: Unique respondents with any 2 divided by evaluatedRespondents, times 100; declared intention, not paid bookings.
+      required: [courseCount, evaluatedCourses, evaluatedRespondents, interestedRespondents, bookNowRespondents, ratingCount, notInterestedRatings, futureRatings, bookNowRatings, needIndex, interestShare, bookNowShare]
+    MixedEvidenceLink:
+      type: object
+      description: Analyst-defined domain crosswalk using a reviewed subset of source excerpts. Only explicit signals on direct links count in domain coverage.
+      properties:
+        themeId: { type: string }
+        title: { type: string }
+        relation: { type: string, enum: [direct, related] }
+        note: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+        explicitGroupIds: { type: array, items: { type: string } }
+      required: [themeId, title, relation, note, evidenceIds, explicitGroupIds]
+    MixedAlignment:
+      type: object
+      properties:
+        code: { type: string, enum: [convergent, divergent, limited, unobserved, quantitative_only] }
+        label: { type: string }
+        explanation: { type: string }
+      required: [code, label, explanation]
+    MixedCourse:
+      type: object
+      properties:
+        courseId: { type: string }
+        label: { type: string }
+        tier: { type: [string, "null"] }
+        shown: { type: integer }
+        interested: { type: integer }
+        bookNow: { type: integer }
+        needIndex: { type: number }
+      required: [courseId, label, tier, shown, interested, bookNow, needIndex]
+    MixedLevelCell:
+      type: object
+      properties:
+        tier: { type: string, enum: [Foundation, Practitioner, Leadership] }
+        label: { type: string }
+        demand: { $ref: "#/components/schemas/MixedDemand" }
+        topCourses: { type: array, items: { $ref: "#/components/schemas/MixedCourse" } }
+      required: [tier, label, demand, topCourses]
+    MixedDomain:
+      type: object
+      properties:
+        groupId: { type: string }
+        label: { type: string }
+        selectionRespondents: { type: integer }
+        selected: { type: integer }
+        selectionShare: { type: [number, "null"] }
+        rankRespondents: { type: integer }
+        priorityScore: { type: [number, "null"] }
+        meanRank: { type: [number, "null"] }
+        demand: { $ref: "#/components/schemas/MixedDemand" }
+        qualitativeGroupIds: { type: array, items: { type: string } }
+        evidenceLinks: { type: array, items: { $ref: "#/components/schemas/MixedEvidenceLink" } }
+        alignment: { $ref: "#/components/schemas/MixedAlignment" }
+        interpretation: { type: string }
+        caveat: { type: string }
+        designImplication: { type: string }
+        levels: { type: array, items: { $ref: "#/components/schemas/MixedLevelCell" } }
+        topCourses: { type: array, items: { $ref: "#/components/schemas/MixedCourse" } }
+      required: [groupId, label, selectionRespondents, selected, selectionShare, rankRespondents, priorityScore, meanRank, demand, qualitativeGroupIds, evidenceLinks, alignment, interpretation, caveat, designImplication, levels, topCourses]
+    MixedTrainingLevel:
+      type: object
+      description: Catalogue level aggregates and explicitly proposed training design; not a survey question about proficiency or a coding of focus-group votes by level.
+      properties:
+        tier: { type: string, enum: [Foundation, Practitioner, Leadership] }
+        label: { type: string }
+        purpose: { type: string }
+        qualitativeInterpretation: { type: string }
+        proposedOutcome: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+        demand: { $ref: "#/components/schemas/MixedDemand" }
+      required: [tier, label, purpose, qualitativeInterpretation, proposedOutcome, evidenceIds, demand]
+    MixedBlindSpot:
+      type: object
+      properties:
+        title: { type: string }
+        explanation: { type: string }
+        evidenceIds: { type: array, items: { type: string } }
+      required: [title, explanation, evidenceIds]
+    MixedMethodsReport:
+      type: object
+      properties:
+        generatedAt: { type: string }
+        qualitativeAnalysisDate: { type: string }
+        respondents: { type: integer }
+        scope: { type: string, enum: [all, B2B, B2C] }
+        qualitativeGroups: { type: integer }
+        gateRespondents: { type: integer }
+        rankRespondents: { type: integer }
+        excludedRankingRespondents:
+          type: integer
+          description: Nonempty Q24 answers that are not a valid permutation of current G1-G6; never remapped.
+        lowSampleThreshold: { type: integer }
+        convergenceThreshold: { type: number }
+        unclassifiedCourseCount: { type: integer }
+        domains: { type: array, items: { $ref: "#/components/schemas/MixedDomain" } }
+        levels: { type: array, items: { $ref: "#/components/schemas/MixedTrainingLevel" } }
+        blindSpots: { type: array, items: { $ref: "#/components/schemas/MixedBlindSpot" } }
+        methodology: { type: array, items: { type: string } }
+      required: [generatedAt, qualitativeAnalysisDate, respondents, scope, qualitativeGroups, gateRespondents, rankRespondents, excludedRankingRespondents, lowSampleThreshold, convergenceThreshold, unclassifiedCourseCount, domains, levels, blindSpots, methodology]
     TrackRankItem:
       type: object
       properties:

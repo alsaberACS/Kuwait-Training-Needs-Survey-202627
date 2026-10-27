@@ -9,6 +9,7 @@ import { HubPoster } from "./focus-infographics/hub-poster";
 import { BreadthPoster } from "./focus-infographics/breadth-poster";
 import { DesignPoster } from "./focus-infographics/design-poster";
 import { ActionsPoster } from "./focus-infographics/actions-poster";
+import { MixedMethodsPosters } from "./focus-infographics/mixed-methods-posters";
 import "./focus-infographics/fi.css";
 
 export function FocusGroupInfographics({ onOpenAnalysis }: { onOpenAnalysis: () => void }) {
@@ -45,11 +46,18 @@ function Board({ data, onOpenAnalysis }: { data: FocusGroupAnalysis; onOpenAnaly
           <button type="button" onClick={onOpenAnalysis} data-testid="button-fi-open-analysis"
             className={cn(btn, "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}><BookOpen className="h-3.5 w-3.5" />التقرير النوعي المفصّل</button>
         </div>
+        <nav aria-label="أقسام الإنفوجرافيك" className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-card p-3 print:hidden">
+          <span className="me-auto text-sm font-semibold">قراءة متكاملة: النوعي × الكمي × مستويات التدريب</span>
+          <a href="#fi-agreement" className={btn} data-testid="link-fi-agreement">تقاطع المجالات الستة</a>
+          <a href="#fi-levels" className={btn} data-testid="link-fi-levels">مصفوفة المستويات</a>
+          <a href="#fi-blindspots" className={btn}>حدود المقارنة والمنهجية</a>
+        </nav>
         <HubPoster data={data} />
         <BreadthPoster data={data} />
         <DesignPoster data={data} />
         <ActionsPoster data={data} />
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{data.methodology.scopeNote} {data.methodology.evidenceRule}</p>
+        <MixedMethodsPosters groups={data.groups} />
+        <p className="text-[11px] leading-relaxed text-muted-foreground">{data.methodology.scopeNote} {data.methodology.evidenceRule} الملصقات المدمجة تقرأ أرقام الاستبانة بجانب الدليل النوعي دون دمجهما رياضياً.</p>
       </div>
       <EvidenceDialog request={req} onClose={() => setReq(null)} restoreFocus={() => trigger.current?.focus()} evidence={evidence} groups={groups} />
     </EvidenceProvider>

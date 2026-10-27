@@ -297,6 +297,179 @@ export interface CourseInsightReport {
   byPath: CourseInsightSlice[];
 }
 
+/**
+ * Valid Q25 ratings pooled within a domain or catalogue level; people deduplicated separately. Null percentages mean unobserved, not zero interest.
+ */
+export interface MixedDemand {
+  courseCount: number;
+  evaluatedCourses: number;
+  evaluatedRespondents: number;
+  interestedRespondents: number;
+  bookNowRespondents: number;
+  ratingCount: number;
+  notInterestedRatings: number;
+  futureRatings: number;
+  bookNowRatings: number;
+  /**
+     * 100 times sum of valid 0/1/2 ratings divided by twice ratingCount. Ratings, not unique respondents, are the weighting unit.
+     * @nullable
+     */
+  needIndex: number | null;
+  /**
+     * Unique respondents with any 1 or 2 divided by evaluatedRespondents, times 100. Not share of all respondents.
+     * @nullable
+     */
+  interestShare: number | null;
+  /**
+     * Unique respondents with any 2 divided by evaluatedRespondents, times 100; declared intention, not paid bookings.
+     * @nullable
+     */
+  bookNowShare: number | null;
+}
+
+export type MixedEvidenceLinkRelation = typeof MixedEvidenceLinkRelation[keyof typeof MixedEvidenceLinkRelation];
+
+
+export const MixedEvidenceLinkRelation = {
+  direct: 'direct',
+  related: 'related',
+} as const;
+
+/**
+ * Analyst-defined domain crosswalk using a reviewed subset of source excerpts. Only explicit signals on direct links count in domain coverage.
+ */
+export interface MixedEvidenceLink {
+  themeId: string;
+  title: string;
+  relation: MixedEvidenceLinkRelation;
+  note: string;
+  evidenceIds: string[];
+  explicitGroupIds: string[];
+}
+
+export type MixedAlignmentCode = typeof MixedAlignmentCode[keyof typeof MixedAlignmentCode];
+
+
+export const MixedAlignmentCode = {
+  convergent: 'convergent',
+  divergent: 'divergent',
+  limited: 'limited',
+  unobserved: 'unobserved',
+  quantitative_only: 'quantitative_only',
+} as const;
+
+export interface MixedAlignment {
+  code: MixedAlignmentCode;
+  label: string;
+  explanation: string;
+}
+
+export interface MixedCourse {
+  courseId: string;
+  label: string;
+  /** @nullable */
+  tier: string | null;
+  shown: number;
+  interested: number;
+  bookNow: number;
+  needIndex: number;
+}
+
+export type MixedLevelCellTier = typeof MixedLevelCellTier[keyof typeof MixedLevelCellTier];
+
+
+export const MixedLevelCellTier = {
+  Foundation: 'Foundation',
+  Practitioner: 'Practitioner',
+  Leadership: 'Leadership',
+} as const;
+
+export interface MixedLevelCell {
+  tier: MixedLevelCellTier;
+  label: string;
+  demand: MixedDemand;
+  topCourses: MixedCourse[];
+}
+
+export interface MixedDomain {
+  groupId: string;
+  label: string;
+  selectionRespondents: number;
+  selected: number;
+  /** @nullable */
+  selectionShare: number | null;
+  rankRespondents: number;
+  /** @nullable */
+  priorityScore: number | null;
+  /** @nullable */
+  meanRank: number | null;
+  demand: MixedDemand;
+  qualitativeGroupIds: string[];
+  evidenceLinks: MixedEvidenceLink[];
+  alignment: MixedAlignment;
+  interpretation: string;
+  caveat: string;
+  designImplication: string;
+  levels: MixedLevelCell[];
+  topCourses: MixedCourse[];
+}
+
+export type MixedTrainingLevelTier = typeof MixedTrainingLevelTier[keyof typeof MixedTrainingLevelTier];
+
+
+export const MixedTrainingLevelTier = {
+  Foundation: 'Foundation',
+  Practitioner: 'Practitioner',
+  Leadership: 'Leadership',
+} as const;
+
+/**
+ * Catalogue level aggregates and explicitly proposed training design; not a survey question about proficiency or a coding of focus-group votes by level.
+ */
+export interface MixedTrainingLevel {
+  tier: MixedTrainingLevelTier;
+  label: string;
+  purpose: string;
+  qualitativeInterpretation: string;
+  proposedOutcome: string;
+  evidenceIds: string[];
+  demand: MixedDemand;
+}
+
+export interface MixedBlindSpot {
+  title: string;
+  explanation: string;
+  evidenceIds: string[];
+}
+
+export type MixedMethodsReportScope = typeof MixedMethodsReportScope[keyof typeof MixedMethodsReportScope];
+
+
+export const MixedMethodsReportScope = {
+  all: 'all',
+  B2B: 'B2B',
+  B2C: 'B2C',
+} as const;
+
+export interface MixedMethodsReport {
+  generatedAt: string;
+  qualitativeAnalysisDate: string;
+  respondents: number;
+  scope: MixedMethodsReportScope;
+  qualitativeGroups: number;
+  gateRespondents: number;
+  rankRespondents: number;
+  /** Nonempty Q24 answers that are not a valid permutation of current G1-G6; never remapped. */
+  excludedRankingRespondents: number;
+  lowSampleThreshold: number;
+  convergenceThreshold: number;
+  unclassifiedCourseCount: number;
+  domains: MixedDomain[];
+  levels: MixedTrainingLevel[];
+  blindSpots: MixedBlindSpot[];
+  methodology: string[];
+}
+
 export interface TrackRankItem {
   trackId: string;
   label: string;
@@ -616,6 +789,10 @@ export type GetCourseInsightParams = {
  * @pattern ^C[1-9][0-9]*$
  */
 courseId: string;
+path?: PathFilterParameter;
+};
+
+export type GetMixedMethodsParams = {
 path?: PathFilterParameter;
 };
 

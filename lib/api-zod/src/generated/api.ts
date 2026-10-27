@@ -622,6 +622,133 @@ export const GetFocusGroupAnalysisResponse = zod.object({
 
 
 /**
+ * @summary Descriptive integration of survey demand, qualitative evidence and catalogue training levels
+ */
+export const GetMixedMethodsQueryParams = zod.object({
+  "path": zod.enum(['B2B', 'B2C']).optional()
+})
+
+export const GetMixedMethodsResponse = zod.object({
+  "generatedAt": zod.string(),
+  "qualitativeAnalysisDate": zod.string(),
+  "respondents": zod.number().int(),
+  "scope": zod.enum(['all', 'B2B', 'B2C']),
+  "qualitativeGroups": zod.number().int(),
+  "gateRespondents": zod.number().int(),
+  "rankRespondents": zod.number().int(),
+  "excludedRankingRespondents": zod.number().int().describe('Nonempty Q24 answers that are not a valid permutation of current G1-G6; never remapped.'),
+  "lowSampleThreshold": zod.number().int(),
+  "convergenceThreshold": zod.number(),
+  "unclassifiedCourseCount": zod.number().int(),
+  "domains": zod.array(zod.object({
+  "groupId": zod.string(),
+  "label": zod.string(),
+  "selectionRespondents": zod.number().int(),
+  "selected": zod.number().int(),
+  "selectionShare": zod.number().nullable(),
+  "rankRespondents": zod.number().int(),
+  "priorityScore": zod.number().nullable(),
+  "meanRank": zod.number().nullable(),
+  "demand": zod.object({
+  "courseCount": zod.number().int(),
+  "evaluatedCourses": zod.number().int(),
+  "evaluatedRespondents": zod.number().int(),
+  "interestedRespondents": zod.number().int(),
+  "bookNowRespondents": zod.number().int(),
+  "ratingCount": zod.number().int(),
+  "notInterestedRatings": zod.number().int(),
+  "futureRatings": zod.number().int(),
+  "bookNowRatings": zod.number().int(),
+  "needIndex": zod.number().nullable().describe('100 times sum of valid 0/1/2 ratings divided by twice ratingCount. Ratings, not unique respondents, are the weighting unit.'),
+  "interestShare": zod.number().nullable().describe('Unique respondents with any 1 or 2 divided by evaluatedRespondents, times 100. Not share of all respondents.'),
+  "bookNowShare": zod.number().nullable().describe('Unique respondents with any 2 divided by evaluatedRespondents, times 100; declared intention, not paid bookings.')
+}).describe('Valid Q25 ratings pooled within a domain or catalogue level; people deduplicated separately. Null percentages mean unobserved, not zero interest.'),
+  "qualitativeGroupIds": zod.array(zod.string()),
+  "evidenceLinks": zod.array(zod.object({
+  "themeId": zod.string(),
+  "title": zod.string(),
+  "relation": zod.enum(['direct', 'related']),
+  "note": zod.string(),
+  "evidenceIds": zod.array(zod.string()),
+  "explicitGroupIds": zod.array(zod.string())
+}).describe('Analyst-defined domain crosswalk using a reviewed subset of source excerpts. Only explicit signals on direct links count in domain coverage.')),
+  "alignment": zod.object({
+  "code": zod.enum(['convergent', 'divergent', 'limited', 'unobserved', 'quantitative_only']),
+  "label": zod.string(),
+  "explanation": zod.string()
+}),
+  "interpretation": zod.string(),
+  "caveat": zod.string(),
+  "designImplication": zod.string(),
+  "levels": zod.array(zod.object({
+  "tier": zod.enum(['Foundation', 'Practitioner', 'Leadership']),
+  "label": zod.string(),
+  "demand": zod.object({
+  "courseCount": zod.number().int(),
+  "evaluatedCourses": zod.number().int(),
+  "evaluatedRespondents": zod.number().int(),
+  "interestedRespondents": zod.number().int(),
+  "bookNowRespondents": zod.number().int(),
+  "ratingCount": zod.number().int(),
+  "notInterestedRatings": zod.number().int(),
+  "futureRatings": zod.number().int(),
+  "bookNowRatings": zod.number().int(),
+  "needIndex": zod.number().nullable().describe('100 times sum of valid 0/1/2 ratings divided by twice ratingCount. Ratings, not unique respondents, are the weighting unit.'),
+  "interestShare": zod.number().nullable().describe('Unique respondents with any 1 or 2 divided by evaluatedRespondents, times 100. Not share of all respondents.'),
+  "bookNowShare": zod.number().nullable().describe('Unique respondents with any 2 divided by evaluatedRespondents, times 100; declared intention, not paid bookings.')
+}).describe('Valid Q25 ratings pooled within a domain or catalogue level; people deduplicated separately. Null percentages mean unobserved, not zero interest.'),
+  "topCourses": zod.array(zod.object({
+  "courseId": zod.string(),
+  "label": zod.string(),
+  "tier": zod.string().nullable(),
+  "shown": zod.number().int(),
+  "interested": zod.number().int(),
+  "bookNow": zod.number().int(),
+  "needIndex": zod.number()
+}))
+})),
+  "topCourses": zod.array(zod.object({
+  "courseId": zod.string(),
+  "label": zod.string(),
+  "tier": zod.string().nullable(),
+  "shown": zod.number().int(),
+  "interested": zod.number().int(),
+  "bookNow": zod.number().int(),
+  "needIndex": zod.number()
+}))
+})),
+  "levels": zod.array(zod.object({
+  "tier": zod.enum(['Foundation', 'Practitioner', 'Leadership']),
+  "label": zod.string(),
+  "purpose": zod.string(),
+  "qualitativeInterpretation": zod.string(),
+  "proposedOutcome": zod.string(),
+  "evidenceIds": zod.array(zod.string()),
+  "demand": zod.object({
+  "courseCount": zod.number().int(),
+  "evaluatedCourses": zod.number().int(),
+  "evaluatedRespondents": zod.number().int(),
+  "interestedRespondents": zod.number().int(),
+  "bookNowRespondents": zod.number().int(),
+  "ratingCount": zod.number().int(),
+  "notInterestedRatings": zod.number().int(),
+  "futureRatings": zod.number().int(),
+  "bookNowRatings": zod.number().int(),
+  "needIndex": zod.number().nullable().describe('100 times sum of valid 0/1/2 ratings divided by twice ratingCount. Ratings, not unique respondents, are the weighting unit.'),
+  "interestShare": zod.number().nullable().describe('Unique respondents with any 1 or 2 divided by evaluatedRespondents, times 100. Not share of all respondents.'),
+  "bookNowShare": zod.number().nullable().describe('Unique respondents with any 2 divided by evaluatedRespondents, times 100; declared intention, not paid bookings.')
+}).describe('Valid Q25 ratings pooled within a domain or catalogue level; people deduplicated separately. Null percentages mean unobserved, not zero interest.')
+}).describe('Catalogue level aggregates and explicitly proposed training design; not a survey question about proficiency or a coding of focus-group votes by level.')),
+  "blindSpots": zod.array(zod.object({
+  "title": zod.string(),
+  "explanation": zod.string(),
+  "evidenceIds": zod.array(zod.string())
+})),
+  "methodology": zod.array(zod.string())
+})
+
+
+/**
  * @summary Future-track ranking results
  */
 export const GetTrackRanksQueryParams = zod.object({

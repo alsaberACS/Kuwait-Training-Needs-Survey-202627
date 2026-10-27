@@ -5,3 +5,4 @@
 - [Printable questionnaire PDF](print-pdf-generation.md) — generated via headless Chromium from survey-definition; fixed A4 pages clip silently, so trust only the overflow audit + previews.
 - [Admin dashboard](admin-dashboard.md) — preview with tagged synthetic rows then delete them; RTL negatives need dir="ltr"; grid items need min-w-0 or wide tables stretch the page on phones.
 - [Focus-group evidence](focus-group-evidence.md) — noisy transcripts and duplicate summaries require primary-source checks; group coverage is not participant votes or market demand.
+- [Mixed-methods interpretation](mixed-methods.md) — compare independent samples descriptively; training levels are provisional catalogue tiers, not learner proficiency.
