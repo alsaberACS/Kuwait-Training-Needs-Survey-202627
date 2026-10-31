@@ -28,6 +28,7 @@ import type {
   CourseDemandReport,
   CourseInsightReport,
   CreateResponseRequest,
+  DeliverableLibrary,
   FocusGroupAnalysis,
   GetAdminSummaryParams,
   GetCourseDemandParams,
@@ -1703,6 +1704,160 @@ export function useExportResponsesCsv<TData = Awaited<ReturnType<typeof exportRe
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getExportResponsesCsvQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListDeliverablesUrl = () => {
+
+
+
+
+  return `/api/admin/deliverables`
+}
+
+/**
+ * @summary Project document library («المخرجات») — the contract and every delivered document, mapped to the ten contract phases
+ */
+export const listDeliverables = async ( options?: Parameters<typeof customFetch>[1]): Promise<DeliverableLibrary> => {
+
+  return customFetch<DeliverableLibrary>(getListDeliverablesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDeliverablesQueryKey = () => {
+    return [
+    `/api/admin/deliverables`
+    ] as const;
+    }
+
+
+export const getListDeliverablesQueryOptions = <TData = Awaited<ReturnType<typeof listDeliverables>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliverables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDeliverablesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDeliverables>>> = ({ signal }) => listDeliverables({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDeliverables>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDeliverablesQueryResult = NonNullable<Awaited<ReturnType<typeof listDeliverables>>>
+export type ListDeliverablesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Project document library («المخرجات») — the contract and every delivered document, mapped to the ten contract phases
+ */
+
+export function useListDeliverables<TData = Awaited<ReturnType<typeof listDeliverables>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDeliverables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDeliverablesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDeliverableFileUrl = (id: string,) => {
+
+
+
+
+  return `/api/admin/deliverables/${id}/file`
+}
+
+/**
+ * @summary Stream one project document as PDF
+ */
+export const getDeliverableFile = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDeliverableFileUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDeliverableFileQueryKey = (id: string,) => {
+    return [
+    `/api/admin/deliverables/${id}/file`
+    ] as const;
+    }
+
+
+export const getGetDeliverableFileQueryOptions = <TData = Awaited<ReturnType<typeof getDeliverableFile>>, TError = ErrorType<void>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDeliverableFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDeliverableFileQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDeliverableFile>>> = ({ signal }) => getDeliverableFile(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDeliverableFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDeliverableFileQueryResult = NonNullable<Awaited<ReturnType<typeof getDeliverableFile>>>
+export type GetDeliverableFileQueryError = ErrorType<void>
+
+
+/**
+ * @summary Stream one project document as PDF
+ */
+
+export function useGetDeliverableFile<TData = Awaited<ReturnType<typeof getDeliverableFile>>, TError = ErrorType<void>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDeliverableFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDeliverableFileQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

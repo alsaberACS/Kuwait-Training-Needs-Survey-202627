@@ -10,6 +10,7 @@ import { trainingPathways } from "../lib/training-pathways";
 import { courseInsight } from "../lib/course-insight";
 import { focusGroupAnalysis } from "../data/focus-groups";
 import { mixedMethods } from "../lib/mixed-methods";
+import { CONTRACT_PHASES, deliverables, deliverableFilePath } from "../data/deliverables";
 
 const router: IRouter = Router();
 
@@ -123,6 +124,30 @@ router.get("/admin/export.csv", async (_req, res) => {
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="survey-responses-${new Date().toISOString().slice(0, 10)}.csv"`);
   return res.send(toCsv(rows));
+});
+
+// Document library («المخرجات»). Files are resolved only through the manifest,
+// never from the request path, and are served with no-store because the
+// contract carries financial terms.
+router.get("/admin/deliverables", (_req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json({ phases: CONTRACT_PHASES, documents: deliverables });
+});
+
+router.get("/admin/deliverables/:id/file", (req, res, next) => {
+  const id = String(req.params.id);
+  const doc = deliverables.find((d) => d.id === id);
+  const file = doc ? deliverableFilePath(doc.id) : null;
+  if (!doc || !file) return res.status(404).json({ error: "Unknown document" });
+  const disposition = req.query.download === "1" ? "attachment" : "inline";
+  return res.sendFile(file, {
+    cacheControl: false,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Cache-Control": "private, no-store",
+      "Content-Disposition": `${disposition}; filename="${doc.file}"; filename*=UTF-8''${encodeURIComponent(`${doc.title}.pdf`)}`,
+    },
+  }, (err) => { if (err) next(err); });
 });
 
 export default router;

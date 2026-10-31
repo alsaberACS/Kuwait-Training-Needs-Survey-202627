@@ -14,3 +14,17 @@ mtime_ms = 1791550423518
 storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:c255f948-eea2-411a-9cb7-0e49b391ef7f/3f12872d-a597-48a9-9ef9-a83c812d0179/9c37c0c3-78ea-45ab-a18e-c1212ee01aae"
 storage_version_token = "1791550540870402"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "lDhnT8o3XHUkIOcqwK3F3"
+uri = "file://exports/progress-report-2026-10-31.pdf"
+type = "pdf"
+title = "تقرير سير العمل الأول — 31 أكتوبر 2026"
+description = "خطاب رسمي إلى المدير العام لغرفة تجارة وصناعة الكويت مع أربع صفحات موجزة: الموقف التنفيذي، المخرجات المسلّمة مقابل مخرجات العقد، العمل الميداني والتحليل، الخطوات التالية."
+logical_id = "68862f95-2530-4cea-b4fb-a094737692d7"
+content_hash = "sha256:5eb05353a06e9ff5a62e433bb9f17cbe7f5d50f343bd5e7e3efe3ee0a3f650eb"
+size = 1772703
+mtime_ms = 1793434817068
+storage_uri = "gcs://replit-rams-assets-sisko/rams/assets/repl:c255f948-eea2-411a-9cb7-0e49b391ef7f/68862f95-2530-4cea-b4fb-a094737692d7/a6a85667-b3d4-4859-bd9a-5acedb774858"
+storage_version_token = "1793435137800646"
+content_type = "application/pdf"

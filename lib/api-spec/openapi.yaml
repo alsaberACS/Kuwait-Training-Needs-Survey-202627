@@ -420,6 +420,47 @@ paths:
             text/csv:
               schema:
                 type: string
+  /admin/deliverables:
+    get:
+      operationId: listDeliverables
+      tags: [admin]
+      summary: Project document library («المخرجات») — the contract and every delivered document, mapped to the ten contract phases
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: Documents served only from the protected API; never bundled publicly
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliverableLibrary"
+        "401":
+          description: Admin access required
+  /admin/deliverables/{id}/file:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      operationId: getDeliverableFile
+      tags: [admin]
+      summary: Stream one project document as PDF
+      security:
+        - AdminKey: []
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          description: Admin access required
+        "404":
+          description: Unknown document id
 components:
   securitySchemes:
     AdminKey:
@@ -1371,3 +1412,45 @@ components:
         evidence:
           type: array
           items: { $ref: "#/components/schemas/FocusGroupEvidence" }
+    ContractPhase:
+      type: object
+      required: [number, title]
+      properties:
+        number: { type: integer, minimum: 1, maximum: 10 }
+        title: { type: string }
+    Deliverable:
+      type: object
+      required: [id, file, category, title, subtitle, reference, issuedOn, issuedLabel, pages, phases, contractDeliverable, highlights, sizeBytes]
+      properties:
+        id: { type: string }
+        file:
+          type: string
+          description: Stable ASCII file name used for downloads
+        category: { type: string, enum: [contract, deliverable, instrument, report] }
+        title: { type: string }
+        subtitle: { type: string }
+        reference: { type: [string, "null"] }
+        issuedOn:
+          type: string
+          description: ISO date (YYYY-MM-DD) the document was issued or signed
+        issuedLabel: { type: string }
+        pages: { type: integer, minimum: 1 }
+        phases:
+          type: array
+          description: Contract phases (المادة 3) the document serves
+          items: { type: integer, minimum: 1, maximum: 10 }
+        contractDeliverable: { type: [string, "null"] }
+        highlights:
+          type: array
+          items: { type: string }
+        sizeBytes: { type: integer, minimum: 0 }
+    DeliverableLibrary:
+      type: object
+      required: [phases, documents]
+      properties:
+        phases:
+          type: array
+          items: { $ref: "#/components/schemas/ContractPhase" }
+        documents:
+          type: array
+          items: { $ref: "#/components/schemas/Deliverable" }

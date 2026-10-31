@@ -751,6 +751,57 @@ export interface FocusGroupAnalysis {
   evidence: FocusGroupEvidence[];
 }
 
+export interface ContractPhase {
+  /**
+     * @minimum 1
+     * @maximum 10
+     */
+  number: number;
+  title: string;
+}
+
+export type DeliverableCategory = typeof DeliverableCategory[keyof typeof DeliverableCategory];
+
+
+export const DeliverableCategory = {
+  contract: 'contract',
+  deliverable: 'deliverable',
+  instrument: 'instrument',
+  report: 'report',
+} as const;
+
+export interface Deliverable {
+  id: string;
+  /** Stable ASCII file name used for downloads */
+  file: string;
+  category: DeliverableCategory;
+  title: string;
+  subtitle: string;
+  /** @nullable */
+  reference: string | null;
+  /** ISO date (YYYY-MM-DD) the document was issued or signed */
+  issuedOn: string;
+  issuedLabel: string;
+  /** @minimum 1 */
+  pages: number;
+  /**
+     * Contract phases (المادة 3) the document serves
+     * @items.minimum 1
+     * @items.maximum 10
+     */
+  phases: number[];
+  /** @nullable */
+  contractDeliverable: string | null;
+  highlights: string[];
+  /** @minimum 0 */
+  sizeBytes: number;
+}
+
+export interface DeliverableLibrary {
+  phases: ContractPhase[];
+  documents: Deliverable[];
+}
+
 export type PathFilterParameter = SurveyPath;
 
 export type GetAdminSummaryParams = {

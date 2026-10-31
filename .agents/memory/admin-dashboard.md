@@ -8,6 +8,10 @@ description: Non-obvious rules for the /admin results dashboard — RTL chart qu
 
 **Headless verification route.** The screenshot tool cannot pass the key gate; drive system Chromium over CDP from Node (global WebSocket), set `sessionStorage.adminKey` from the env var inside the script without printing it, click `tab-*` buttons, and capture viewport-sized chunks. `/tmp` can be wiped mid-session (container restart) — keep helper scripts trivially recreatable and re-check workflows are up (502 = not running) before trusting a diag run.
 
+**Documents library tab («المخرجات»).** Project PDFs (contract, delivered studies, questionnaire editions, progress reports) are copies kept in the API server's documents folder and listed from a manifest that skips missing files; they are served only through the admin-key API, never from `public/` or object storage.
+**Why:** the contract PDF carries financial terms, and the user wanted the attachments saved inside the admin page rather than published. Keep originals untouched in `attached_assets/`.
+**How to apply:** adding a document = copy the PDF in, add a manifest entry (title, phases, contract-deliverable mapping), restart the API server (the list is computed at startup). The CDP headless route above is the way to see the tab; clicking «عرض» should yield a dialog with a `blob:` iframe.
+
 **RTL numerals.** Negative numbers (skill gaps, deltas) rendered inside RTL text show as `0.15-`; wrap numeric cells in `dir="ltr"`. Recharts stays `dir="ltr"` with `XAxis reversed` / `YAxis orientation="right"`.
 
 **Grid-item overflow trap.** Any wide table (`min-w-[...]` inside `overflow-x-auto`) placed in a CSS grid item stretches the whole column on phones unless the grid item has `min-w-0` — `Reveal` and `Panel` carry it for that reason; do not remove.

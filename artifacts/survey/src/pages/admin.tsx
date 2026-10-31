@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation, MessagesSquare, Network,
+  KeyRound, Loader2, LogOut, LayoutDashboard, Activity, GraduationCap, ListOrdered, SlidersHorizontal, Target, Table2, Download, Menu, Layers, Sparkles, Route, Presentation, MessagesSquare, Network, FolderCheck,
 } from "lucide-react";
 import { setAuthTokenGetter, useVerifyAdminKey, useExportResponsesCsv, getExportResponsesCsvQueryKey, type SurveyPath } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
@@ -20,10 +20,11 @@ import { TrainingPathways } from "@/components/admin/training-pathways";
 import { CourseInsight } from "@/components/admin/course-insight";
 import { FocusGroupAnalysisView } from "@/components/admin/focus-groups";
 import { FocusGroupInfographics } from "@/components/admin/focus-group-infographics";
+import { Deliverables } from "@/components/admin/deliverables";
 
 setAuthTokenGetter(() => sessionStorage.getItem("adminKey"));
 
-type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "focus-groups" | "focus-infographics" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses";
+type Tab = "overview" | "infographics" | "pathways" | "course-insight" | "focus-groups" | "focus-infographics" | "skills" | "courses" | "tracks" | "prefs" | "segments" | "matching" | "responses" | "deliverables";
 const TABS: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "overview", label: "نظرة عامة", icon: LayoutDashboard },
   { id: "infographics", label: "إنفوجرافيك", icon: Sparkles },
@@ -38,6 +39,7 @@ const TABS: { id: Tab; label: string; icon: typeof Activity }[] = [
   { id: "segments", label: "الشرائح", icon: Layers },
   { id: "matching", label: "المطابقة", icon: Target },
   { id: "responses", label: "الردود", icon: Table2 },
+  { id: "deliverables", label: "المخرجات", icon: FolderCheck },
 ];
 
 export default function AdminPage() {
@@ -161,6 +163,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           {tab === "segments" && <Segments />}
           {tab === "matching" && <Matching />}
           {tab === "responses" && <Responses />}
+          {tab === "deliverables" && <Deliverables />}
         </motion.div>
       </main>
     </div>

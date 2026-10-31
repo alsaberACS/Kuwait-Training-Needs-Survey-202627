@@ -44,6 +44,7 @@ export const CHAPTERS: Record<string, Chapter> = {
   segments: { id: "segments", number: 11, question: "أين تختلف الاحتياجات بين الشرائح؟", method: "المؤشرات نفسها محسوبة داخل كل شريحة على حدة؛ الشرائح الأقل من 5 ردود تُعرض للاستئناس فقط." },
   matching: { id: "matching", number: 12, question: "ماذا نُطلق أولاً؟ خريطة الطلب المؤكدة", method: "احتياج الميدان × أدلة الدراسة المكتبية لكل ورشة من ورش الكتالوج الـ 70، مع درجة مركّبة واختبار حساسية." },
   responses: { id: "responses", number: 13, question: "سجل الردود الكامل", method: "الردود المكتملة والمسودات مع عوامل التصفية وعرض تفصيلي لكل رد." },
+  deliverables: { id: "deliverables", number: 14, question: "ما الوثائق التعاقدية والمخرجات المسلّمة حتى الآن، وأين تقع من مراحل العقد؟", method: "مكتبة مرجعية لوثائق المشروع بصيغة PDF: العقد، المخرجات المسلّمة، أدوات جمع البيانات، وتقارير المتابعة؛ كل وثيقة مربوطة بمراحل المادة 3 من العقد وتُعرض أو تُنزَّل عبر الواجهة المحمية فقط." },
 };
 
 /** Minimum respondents before a segment cell is treated as more than indicative. */

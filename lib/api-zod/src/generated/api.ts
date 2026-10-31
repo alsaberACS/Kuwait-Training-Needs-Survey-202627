@@ -894,3 +894,48 @@ export const ListCatalogueResponse = zod.array(ListCatalogueResponseItem)
 export const ExportResponsesCsvResponse = zod.unknown()
 
 
+/**
+ * @summary Project document library («المخرجات») — the contract and every delivered document, mapped to the ten contract phases
+ */
+export const listDeliverablesResponsePhasesItemNumberMax = 10;
+
+
+export const listDeliverablesResponseDocumentsItemPhasesItemMax = 10;
+
+export const listDeliverablesResponseDocumentsItemSizeBytesMin = 0;
+
+
+
+export const ListDeliverablesResponse = zod.object({
+  "phases": zod.array(zod.object({
+  "number": zod.number().int().min(1).max(listDeliverablesResponsePhasesItemNumberMax),
+  "title": zod.string()
+})),
+  "documents": zod.array(zod.object({
+  "id": zod.string(),
+  "file": zod.string().describe('Stable ASCII file name used for downloads'),
+  "category": zod.enum(['contract', 'deliverable', 'instrument', 'report']),
+  "title": zod.string(),
+  "subtitle": zod.string(),
+  "reference": zod.string().nullable(),
+  "issuedOn": zod.string().describe('ISO date (YYYY-MM-DD) the document was issued or signed'),
+  "issuedLabel": zod.string(),
+  "pages": zod.number().int().min(1),
+  "phases": zod.array(zod.number().int().min(1).max(listDeliverablesResponseDocumentsItemPhasesItemMax)).describe('Contract phases (المادة 3) the document serves'),
+  "contractDeliverable": zod.string().nullable(),
+  "highlights": zod.array(zod.string()),
+  "sizeBytes": zod.number().int().min(listDeliverablesResponseDocumentsItemSizeBytesMin)
+}))
+})
+
+
+/**
+ * @summary Stream one project document as PDF
+ */
+export const GetDeliverableFileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetDeliverableFileResponse = zod.unknown()
+
+
